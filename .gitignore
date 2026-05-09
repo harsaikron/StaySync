@@ -4,3 +4,6 @@ uploads/
 .env
 portal/.next/
 portal/node_modules/
+npm-debug.log*
+.DS_Store
+dist/
