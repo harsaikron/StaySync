@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { get } from '@/lib/api';
 import { useTTS } from '@/providers/TTSProvider';
 import { SSEProvider, useSSE } from '@/providers/SSEProvider';
@@ -7,7 +7,7 @@ import AlertBanner from '@/components/AlertBanner';
 import CameraGrid from '@/components/CameraGrid';
 import RiskScoreBar from '@/components/RiskScoreBar';
 
-function DashboardContent({ cameras }) {
+function DashboardContent({ cameras, onRefreshCameras }) {
   const { latestEvents, activeAlerts, setActiveAlerts } = useSSE();
   const { speak, autoSpeak, setAutoSpeak } = useTTS();
   const [performance, setPerformance] = useState(null);
@@ -35,8 +35,14 @@ function DashboardContent({ cameras }) {
 
       {performance && <RiskScoreBar score={performance.fallRisk} />}
 
-      <h2 className="text-sm font-bold text-[#8b949e] uppercase tracking-wide mt-4 mb-2">Live Cameras</h2>
-      <CameraGrid cameras={cameras} />
+      <div className="flex items-center justify-between mt-4 mb-2">
+        <h2 className="text-sm font-bold text-[#8b949e] uppercase tracking-wide">Live Cameras</h2>
+        <button onClick={onRefreshCameras}
+          className="text-xs text-[#58a6ff] border border-[#30363d] px-2 py-1 rounded">
+          ↺ Refresh All
+        </button>
+      </div>
+      <CameraGrid cameras={cameras} onRefresh={onRefreshCameras} />
 
       {Object.keys(latestEvents).length > 0 && (
         <div className="mt-4">
@@ -58,13 +64,22 @@ function DashboardContent({ cameras }) {
 export default function DashboardPage() {
   const [cameras, setCameras] = useState([]);
 
-  useEffect(() => { get('/cameras').then(setCameras).catch(() => {}); }, []);
+  const loadCameras = useCallback(() => {
+    get('/cameras').then(setCameras).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadCameras();
+    // Auto-refresh camera list every 10s to pick up online/offline changes
+    const interval = setInterval(loadCameras, 10000);
+    return () => clearInterval(interval);
+  }, [loadCameras]);
 
   const cameraIds = cameras.map(c => c.id);
 
   return (
     <SSEProvider cameraIds={cameraIds}>
-      <DashboardContent cameras={cameras} />
+      <DashboardContent cameras={cameras} onRefreshCameras={loadCameras} />
     </SSEProvider>
   );
 }
