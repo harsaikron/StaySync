@@ -1,13 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { get } from '@/lib/api';
 import { useTTS } from '@/providers/TTSProvider';
 import { SSEProvider, useSSE } from '@/providers/SSEProvider';
 import AlertBanner from '@/components/AlertBanner';
 import CameraGrid from '@/components/CameraGrid';
 import RiskScoreBar from '@/components/RiskScoreBar';
+import Icon from '@/components/Icon';
 
-function DashboardContent({ cameras }) {
+function DashboardContent({ cameras, onRefreshCameras }) {
   const { latestEvents, activeAlerts, setActiveAlerts } = useSSE();
   const { speak, autoSpeak, setAutoSpeak } = useTTS();
   const [performance, setPerformance] = useState(null);
@@ -21,32 +22,45 @@ function DashboardContent({ cameras }) {
   const dismissAlert = (id) => setActiveAlerts(prev => prev.filter(a => a.id !== id));
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">StaySync 🏠</h1>
+    <div className="min-h-screen bg-black p-4 pb-24">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-2xl font-bold text-white">StaySync</h1>
         <button onClick={() => setAutoSpeak(v => !v)}
-          className={`text-xs px-3 py-1 rounded-full border ${autoSpeak
-            ? 'border-[#238636] text-[#3fb950]' : 'border-[#30363d] text-[#8b949e]'}`}>
-          🔊 Auto-speak {autoSpeak ? 'ON' : 'OFF'}
+          className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border transition-colors
+            ${autoSpeak ? 'border-blue-600 text-blue-400' : 'border-[#333] text-[#666]'}`}>
+          <Icon name="volume" size={15} />
+          {autoSpeak ? 'Voice On' : 'Voice Off'}
         </button>
       </div>
 
       <AlertBanner alerts={activeAlerts} onDismiss={dismissAlert} />
 
-      {performance && <RiskScoreBar score={performance.fallRisk} />}
+      {performance && <div className="mb-4"><RiskScoreBar score={performance.fallRisk} /></div>}
 
-      <h2 className="text-sm font-bold text-[#8b949e] uppercase tracking-wide mt-4 mb-2">Live Cameras</h2>
-      <CameraGrid cameras={cameras} />
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-bold text-[#666] uppercase tracking-widest">Live Cameras</h2>
+        <button onClick={onRefreshCameras}
+          className="flex items-center gap-1.5 text-sm text-blue-400 border border-[#333] px-3 py-1.5 rounded-lg">
+          <Icon name="refresh" size={14} />
+          Refresh
+        </button>
+      </div>
+      <CameraGrid cameras={cameras} onRefresh={onRefreshCameras} />
 
       {Object.keys(latestEvents).length > 0 && (
-        <div className="mt-4">
-          <h2 className="text-sm font-bold text-[#8b949e] uppercase tracking-wide mb-2">Latest Guidance</h2>
+        <div className="mt-5">
+          <h2 className="text-sm font-bold text-[#666] uppercase tracking-widest mb-3">Latest Guidance</h2>
           {Object.entries(latestEvents).map(([camId, event]) => (
-            <div key={camId} className="bg-[#21262d] rounded-lg p-3 mb-2">
-              <div className="text-xs text-[#8b949e] mb-1">Camera {camId}</div>
-              <div className="text-sm text-[#e6edf3]">{event.guidance}</div>
+            <div key={camId} className="bg-[#111] border border-[#222] rounded-xl p-4 mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="camera" size={14} className="text-[#666]" />
+                <span className="text-sm text-[#666]">Camera {camId}</span>
+              </div>
+              <p className="text-base text-white leading-relaxed">{event.guidance}</p>
               <button onClick={() => speak(event.guidance)}
-                className="mt-2 text-xs text-[#58a6ff]">🔊 Speak</button>
+                className="mt-3 flex items-center gap-1.5 text-sm text-blue-400">
+                <Icon name="volume" size={14} /> Speak
+              </button>
             </div>
           ))}
         </div>
@@ -57,14 +71,19 @@ function DashboardContent({ cameras }) {
 
 export default function DashboardPage() {
   const [cameras, setCameras] = useState([]);
+  const loadCameras = useCallback(() => {
+    get('/cameras').then(setCameras).catch(() => {});
+  }, []);
 
-  useEffect(() => { get('/cameras').then(setCameras).catch(() => {}); }, []);
-
-  const cameraIds = cameras.map(c => c.id);
+  useEffect(() => {
+    loadCameras();
+    const interval = setInterval(loadCameras, 10000);
+    return () => clearInterval(interval);
+  }, [loadCameras]);
 
   return (
-    <SSEProvider cameraIds={cameraIds}>
-      <DashboardContent cameras={cameras} />
+    <SSEProvider cameraIds={cameras.map(c => c.id)}>
+      <DashboardContent cameras={cameras} onRefreshCameras={loadCameras} />
     </SSEProvider>
   );
 }

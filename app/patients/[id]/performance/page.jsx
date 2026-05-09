@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import StatCard from '@/components/StatCard';
 import AISummary from '@/components/AISummary';
 import AISuggestions from '@/components/AISuggestions';
+import Icon from '@/components/Icon';
 
 export default function PerformancePage() {
   const { id } = useParams();
@@ -26,67 +27,67 @@ export default function PerformancePage() {
     }
   };
 
-  if (!perf) return <div className="p-4 text-[#8b949e]">Loading...</div>;
+  if (!perf) return <div className="p-4 text-[#666]">Loading...</div>;
 
   const hourData = perf.confusionByHour.map((count, hour) => ({
     hour: `${hour}:00`, count
   })).filter(d => d.count > 0);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">📊 Performance</h1>
+    <div className="min-h-screen bg-black p-4 pb-24">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <Icon name="chart" size={22} className="text-white" />
+          <h1 className="text-2xl font-bold text-white">Performance</h1>
+        </div>
         <div className="flex gap-2">
           {[7, 30].map(d => (
             <button key={d} onClick={() => setDays(d)}
-              className={`text-xs px-3 py-1 rounded-full border ${days === d
-                ? 'border-[#1f6feb] text-[#58a6ff]' : 'border-[#30363d] text-[#8b949e]'}`}>
+              className={`text-sm px-4 py-1.5 rounded-full border font-semibold transition-colors ${days === d
+                ? 'border-blue-600 text-blue-400 bg-blue-950' : 'border-[#333] text-[#666]'}`}>
               {d}d
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <StatCard value={perf.confusionEpisodes} label="Confusion Episodes" colour="#f78536" />
-        <StatCard value={perf.falls} label="Falls" colour="#f85149" />
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <StatCard value={perf.confusionEpisodes} label="Confusion Episodes" colour="#f97316" />
+        <StatCard value={perf.falls} label="Falls" colour="#ef4444" />
         <StatCard
           value={perf.medicineAdherence !== null ? perf.medicineAdherence : '—'}
           suffix={perf.medicineAdherence !== null ? '%' : ''}
           label="Medicine Adherence"
-          colour="#3fb950" />
-        <StatCard value={perf.fallRisk} label="Risk Score" colour={perf.fallRisk < 33 ? '#3fb950' : perf.fallRisk < 66 ? '#f78536' : '#f85149'} />
+          colour="#22c55e" />
+        <StatCard value={perf.fallRisk} label="Risk Score"
+          colour={perf.fallRisk < 33 ? '#22c55e' : perf.fallRisk < 66 ? '#f97316' : '#ef4444'} />
       </div>
 
       {hourData.length > 0 && (
-        <div className="bg-[#21262d] rounded-lg p-4 mb-4">
-          <div className="text-xs text-[#8b949e] uppercase font-bold mb-3">Confusion by Hour of Day</div>
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4 mb-5">
+          <div className="text-sm text-[#666] uppercase tracking-widest font-bold mb-3">Confusion by Hour</div>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={hourData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-              <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#8b949e' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#8b949e' }} />
-              <Tooltip contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, fontSize: 11 }} />
+              <XAxis dataKey="hour" tick={{ fontSize: 11, fill: '#666' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#666' }} />
+              <Tooltip contentStyle={{ background: '#111', border: '1px solid #333', borderRadius: 8, fontSize: 12, color: '#fff' }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {hourData.map((_, i) => <Cell key={i} fill="#f78536" />)}
+                {hourData.map((_, i) => <Cell key={i} fill="#f97316" />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      <div className="mb-4">
-        <AISummary report={perf.latestReport} />
-      </div>
-
+      <div className="mb-4"><AISummary report={perf.latestReport} /></div>
       {perf.latestReport?.suggestions && (
-        <div className="mb-4">
-          <AISuggestions suggestions={perf.latestReport.suggestions} />
-        </div>
+        <div className="mb-4"><AISuggestions suggestions={perf.latestReport.suggestions} /></div>
       )}
 
       <button onClick={generateReport} disabled={generating}
-        className="w-full border border-[#6e40c9] text-[#a371f7] py-3 rounded-lg text-sm font-medium disabled:opacity-50">
-        {generating ? '🤖 Generating...' : '🤖 Generate AI Report Now'}
+        className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-base font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+        <Icon name="bot" size={18} />
+        {generating ? 'Generating...' : 'Generate AI Report Now'}
       </button>
     </div>
   );

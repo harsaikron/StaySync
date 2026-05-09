@@ -1,19 +1,22 @@
 'use client';
+import Icon from '@/components/Icon';
+
 export default function AlertBanner({ alerts, onDismiss }) {
   if (!alerts?.length) return null;
   const top = alerts[0];
   return (
-    <div className="bg-[#3a1a1a] border border-[#f85149] rounded-lg p-3 mb-4 flex items-start gap-3">
-      <span className="text-xl">🚨</span>
+    <div className="bg-red-950 border border-red-700 rounded-xl p-4 mb-4 flex items-start gap-3">
+      <Icon name="bell" size={20} color="#ef4444" />
       <div className="flex-1">
-        <div className="text-[#f85149] text-xs font-bold uppercase">
-          {top.severity === 'critical' ? 'CRITICAL ALERT' : 'ALERT'} — Camera {top.cameraId}
+        <div className="text-red-400 text-sm font-bold uppercase tracking-wide">
+          {top.severity === 'critical' ? 'Critical Alert' : 'Alert'} — Camera {top.cameraId}
         </div>
-        <div className="text-[#e6edf3] text-sm mt-1">{top.guidance}</div>
+        <div className="text-white text-base mt-1">{top.guidance}</div>
       </div>
       <button onClick={() => onDismiss(top.id)}
-        className="text-[#8b949e] text-xs px-2 py-1 border border-[#30363d] rounded">
-        ✓ Handling
+        className="text-[#888] text-sm px-3 py-1.5 border border-[#333] rounded-lg flex items-center gap-1 shrink-0">
+        <Icon name="check" size={14} />
+        Done
       </button>
     </div>
   );

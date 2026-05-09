@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import PatientForm from '@/components/PatientForm';
 
-const RISK_COLOUR = { Low: '#3fb950', Medium: '#f78536', High: '#f85149' };
+import Icon from '@/components/Icon';
+const RISK_COLOUR = { Low: '#22c55e', Medium: '#f97316', High: '#ef4444' };
 
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -25,65 +26,72 @@ export default function PatientDetailPage() {
     load();
   };
 
-  if (!patient) return <div className="p-4 text-[#8b949e]">Loading...</div>;
+  if (!patient) return <div className="p-4 text-[#666]">Loading...</div>;
 
   const riskLabel = (perf?.fallRisk || 0) < 33 ? 'Low' : (perf?.fallRisk || 0) < 66 ? 'Medium' : 'High';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-4">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#1f6feb] to-[#a371f7]
-          flex items-center justify-center text-3xl">👤</div>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">{patient.name}</h1>
-          <div className="text-sm text-[#8b949e]">Age {patient.age}</div>
+    <div className="min-h-screen bg-black p-4 pb-24">
+      <div className="flex items-center gap-4 mb-5">
+        <div className="w-16 h-16 rounded-full bg-blue-950 border border-blue-800 flex items-center justify-center shrink-0">
+          <Icon name="user" size={28} className="text-blue-400" />
         </div>
-        <span className="text-xs font-bold px-2 py-1 rounded"
-          style={{ background: `${RISK_COLOUR[riskLabel]}22`, color: RISK_COLOUR[riskLabel] }}>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-white">{patient.name}</h1>
+          <div className="text-sm text-[#666]">Age {patient.age}</div>
+        </div>
+        <span className="text-sm font-bold px-3 py-1 rounded-full"
+          style={{ background: `${RISK_COLOUR[riskLabel]}20`, color: RISK_COLOUR[riskLabel] }}>
           {riskLabel} Risk
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-5">
         <Link href={`/patients/${id}/performance`}
-          className="bg-[#1a1a2e] border border-[#6e40c9] rounded-lg p-3 text-center">
-          <div className="text-lg mb-1">📊</div>
-          <div className="text-xs text-[#a371f7] font-bold">Performance</div>
+          className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col items-center gap-2 hover:border-blue-700 transition-colors">
+          <Icon name="chart" size={22} className="text-blue-400" />
+          <div className="text-sm font-bold text-blue-400">Performance</div>
         </Link>
         <Link href={`/patients/${id}/timeline`}
-          className="bg-[#21262d] border border-[#30363d] rounded-lg p-3 text-center">
-          <div className="text-lg mb-1">🕐</div>
-          <div className="text-xs text-[#8b949e] font-bold">Timeline</div>
+          className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col items-center gap-2 hover:border-[#444] transition-colors">
+          <Icon name="clock" size={22} className="text-[#888]" />
+          <div className="text-sm font-bold text-[#888]">Timeline</div>
         </Link>
       </div>
 
       {!editing ? (
         <>
           <Section title="Conditions">
-            {patient.conditions?.map(c => (
-              <span key={c} className="text-xs bg-[#21262d] px-2 py-1 rounded mr-2 mb-2 inline-block">{c}</span>
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {patient.conditions?.map(c => (
+                <span key={c} className="text-sm bg-[#1a1a1a] border border-[#333] px-3 py-1 rounded-full text-white">{c}</span>
+              ))}
+            </div>
           </Section>
           <Section title="Medications">
             {patient.medications?.map(m => (
-              <div key={m} className="text-sm text-[#e6edf3] py-1 border-b border-[#21262d] last:border-0">{m}</div>
+              <div key={m} className="flex items-center gap-2 text-base text-white py-2 border-b border-[#1a1a1a] last:border-0">
+                <Icon name="shield" size={14} className="text-[#555] shrink-0" />
+                {m}
+              </div>
             ))}
           </Section>
           <Section title="Daily Routine">
             {Object.entries(patient.routine || {}).map(([k, v]) => (
-              <div key={k} className="flex justify-between text-sm py-1 border-b border-[#21262d] last:border-0">
-                <span className="text-[#8b949e] capitalize">{k}</span>
-                <span>{v}</span>
+              <div key={k} className="flex justify-between text-base py-2 border-b border-[#1a1a1a] last:border-0">
+                <span className="text-[#666] capitalize">{k}</span>
+                <span className="text-white">{v}</span>
               </div>
             ))}
           </Section>
           <button onClick={() => setEditing(true)}
-            className="w-full border border-[#30363d] text-[#8b949e] py-3 rounded-lg mt-4">
-            ✏️ Edit Profile
+            className="w-full border border-[#333] text-[#888] py-3.5 rounded-xl mt-4 flex items-center justify-center gap-2 text-base hover:border-[#555] hover:text-white transition-colors">
+            <Icon name="edit" size={16} />
+            Edit Profile
           </button>
         </>
       ) : (
-        <div className="bg-[#21262d] rounded-lg p-4">
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <PatientForm initial={patient} onSave={save} onCancel={() => setEditing(false)} />
         </div>
       )}
@@ -94,8 +102,8 @@ export default function PatientDetailPage() {
 function Section({ title, children }) {
   return (
     <div className="mb-4">
-      <div className="text-xs text-[#8b949e] uppercase tracking-wide font-bold mb-2">{title}</div>
-      <div className="bg-[#21262d] rounded-lg p-3">{children}</div>
+      <div className="text-xs text-[#555] uppercase tracking-widest font-bold mb-2">{title}</div>
+      <div className="bg-[#111] border border-[#222] rounded-xl p-4">{children}</div>
     </div>
   );
 }
