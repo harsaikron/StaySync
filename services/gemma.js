@@ -1,5 +1,5 @@
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma4:12b';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma4:e4b';
 
 const PROMPTS = {
   confusion: (time, routine) => `You are a dementia care AI assistant. Analyse this image of a patient.
