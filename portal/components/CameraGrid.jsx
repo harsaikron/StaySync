@@ -6,11 +6,13 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 function CameraCard({ camera, onRefresh }) {
   const [ts, setTs] = useState(Date.now());
   const [imgOk, setImgOk] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
+    if (paused) return;
     const interval = setInterval(() => setTs(Date.now()), 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [paused]);
 
   const src = `${BASE}/stream-snapshot/${camera.id}?t=${ts}`;
 
@@ -28,17 +30,40 @@ function CameraCard({ camera, onRefresh }) {
         {!imgOk && (
           <span className="text-4xl absolute pointer-events-none">📷</span>
         )}
+        {paused && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <span className="text-white text-xs font-bold tracking-widest">PAUSED</span>
+          </div>
+        )}
       </div>
       <div className="p-2 flex items-center justify-between gap-2">
         <span className="text-sm font-medium truncate">{camera.name}</span>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => { setTs(Date.now()); onRefresh && onRefresh(); }}
-            className="text-[#58a6ff] text-xs px-2 py-1 border border-[#30363d] rounded hover:border-[#58a6ff]"
-            title="Refresh"
+            onClick={() => {
+              if (paused) {
+                setPaused(false);
+                setTs(Date.now());
+              } else {
+                setPaused(true);
+              }
+            }}
+            className={`text-xs px-2 py-1 border rounded ${paused
+              ? 'border-[#3fb950] text-[#3fb950] hover:border-[#3fb950]'
+              : 'border-[#f85149] text-[#f85149] hover:border-[#f85149]'}`}
+            title={paused ? 'Resume live feed' : 'Stop live feed'}
           >
-            ↺ Refresh
+            {paused ? '▶ Resume' : '■ Stop'}
           </button>
+          {!paused && (
+            <button
+              onClick={() => { setTs(Date.now()); onRefresh && onRefresh(); }}
+              className="text-[#58a6ff] text-xs px-2 py-1 border border-[#30363d] rounded hover:border-[#58a6ff]"
+              title="Refresh"
+            >
+              ↺
+            </button>
+          )}
           <span className={`text-xs px-2 py-0.5 rounded-full ${camera.online
             ? 'bg-[#238636] text-white' : 'bg-[#30363d] text-[#8b949e]'}`}>
             {camera.online ? 'LIVE' : 'OFFLINE'}
