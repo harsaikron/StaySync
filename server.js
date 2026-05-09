@@ -31,6 +31,7 @@ app.get('/health', (req, res) => res.json({ ok: true, timestamp: new Date().toIS
 app.use('/cameras', require('./routes/cameras'));
 app.use('/patients', require('./routes/patients'));
 app.use('/upload', require('./routes/upload'));
+app.use('/feedback', require('./routes/feedback'));
 app.use('/', require('./routes/stream'));
 app.use('/', require('./routes/alerts'));
 app.use('/', require('./routes/reports'));

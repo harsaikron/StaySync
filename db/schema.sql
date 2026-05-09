@@ -54,3 +54,25 @@ CREATE TABLE IF NOT EXISTS reports (
   score INTEGER,
   created_at INTEGER DEFAULT (unixepoch())
 );
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  message TEXT NOT NULL,
+  user_type TEXT NOT NULL DEFAULT 'caregiver',
+  status TEXT NOT NULL DEFAULT 'pending',
+  ai_analysis TEXT,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS ai_improvements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  code_suggestion TEXT,
+  priority TEXT NOT NULL DEFAULT 'medium',
+  area TEXT NOT NULL,
+  source_feedback_ids TEXT DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'proposed',
+  created_at INTEGER DEFAULT (unixepoch())
+);

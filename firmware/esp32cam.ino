@@ -9,9 +9,10 @@
 */
 
 // ─── EDIT THESE ───────────────────────────────────────────────────────────────
-#define WIFI_SSID       "YourWiFiName"
-#define WIFI_PASSWORD   "YourWiFiPassword"
+#define WIFI_SSID       "StarHub_4594"
+#define WIFI_PASSWORD   "HAWerJNQ5h"
 #define SERVER_URL      "https://lloyd-ethical-michael-locale.trycloudflare.com"
+#define CAMERA_ID       "esp32-livingroom"   // fixed ID — must match portal
 // ──────────────────────────────────────────────────────────────────────────────
 
 #include "esp_camera.h"
@@ -40,7 +41,7 @@
 char ssid[64]       = WIFI_SSID;
 char password[64]   = WIFI_PASSWORD;
 char serverUrl[192] = SERVER_URL;
-String cameraId     = "";
+String cameraId     = CAMERA_ID;
 bool wifiReady      = false;
 
 // ─── Serial config ────────────────────────────────────────────────────────────
@@ -82,9 +83,6 @@ bool connectWiFi() {
 }
 
 void registerCamera() {
-  if (cameraId.length() == 0) {
-    cameraId = "esp32-" + String((uint32_t)(ESP.getEfuseMac() & 0xFFFFFFFF), HEX);
-  }
   HTTPClient http;
   String url = String(serverUrl) + "/cameras/register";
   http.begin(url);

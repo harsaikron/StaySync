@@ -1,0 +1,70 @@
+<h2>System Design — Full Architecture</h2>
+<p class="subtitle">Section 1 of 3 — Overall system flow. Confirm before we move to frontend pages.</p>
+
+<div style="background:#0d1117;border-radius:12px;padding:24px;font-family:monospace;font-size:12px;color:#e6edf3;line-height:2">
+
+  <!-- Row 1: Hardware -->
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+    <div style="background:#1f6feb;border-radius:8px;padding:10px 14px;text-align:center;min-width:120px">
+      <div style="font-size:20px">📷</div>
+      <div style="font-weight:bold">ESP32-CAM</div>
+      <div style="color:#8b949e;font-size:11px">JPEG every 3s</div>
+    </div>
+    <div style="color:#58a6ff;font-size:18px">──POST /upload──▶</div>
+    <div style="background:#388bfd22;border:1px solid #388bfd;border-radius:8px;padding:10px 14px;text-align:center;min-width:150px">
+      <div style="font-size:20px">🖥️</div>
+      <div style="font-weight:bold">Express Backend</div>
+      <div style="color:#8b949e;font-size:11px">localhost:3001 (Mac)</div>
+    </div>
+    <div style="color:#58a6ff;font-size:18px">──HTTP──▶</div>
+    <div style="background:#23863622;border:1px solid #238636;border-radius:8px;padding:10px 14px;text-align:center;min-width:120px">
+      <div style="font-size:20px">🤖</div>
+      <div style="font-weight:bold">Ollama</div>
+      <div style="color:#8b949e;font-size:11px">gemma4:12b-it<br>localhost:11434</div>
+    </div>
+  </div>
+
+  <!-- Cloudflare Tunnel -->
+  <div style="background:#6e40c922;border:1px solid #6e40c9;border-radius:8px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:16px">🌐</span>
+    <div>
+      <span style="color:#a371f7;font-weight:bold">Cloudflare Tunnel</span>
+      <span style="color:#8b949e;margin-left:8px">https://staysync.cfargotunnel.com  ←→  localhost:3001</span>
+    </div>
+    <div style="margin-left:auto;color:#8b949e;font-size:11px">Free • Persistent URL • No port-forwarding</div>
+  </div>
+
+  <!-- Row 2: Frontend -->
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+    <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px 14px;text-align:center;min-width:150px">
+      <div style="font-size:20px">📱</div>
+      <div style="font-weight:bold">Patient's Phone</div>
+      <div style="color:#8b949e;font-size:11px">Chrome browser<br>opens portal URL</div>
+    </div>
+    <div style="color:#58a6ff;font-size:18px">◀──SSE push──</div>
+    <div style="background:#f7853622;border:1px solid #f78536;border-radius:8px;padding:10px 14px;text-align:center;min-width:150px">
+      <div style="font-size:20px">⚡</div>
+      <div style="font-weight:bold">Next.js Portal</div>
+      <div style="color:#8b949e;font-size:11px">Vercel (public URL)<br>calls tunnel API</div>
+    </div>
+    <div style="color:#58a6ff;font-size:18px">◀──guidance text──</div>
+    <div style="color:#8b949e;font-size:11px;text-align:center">Gemma 4<br>analysis result</div>
+  </div>
+
+  <!-- Row 3: TTS -->
+  <div style="background:#21262d;border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:16px">🔊</span>
+    <div><span style="color:#f0883e;font-weight:bold">Web Speech API (TTS)</span>
+    <span style="color:#8b949e;margin-left:8px">— browser reads guidance aloud on patient's phone speaker. No app install.</span></div>
+  </div>
+
+  <!-- Camera Setup row -->
+  <div style="margin-top:16px;background:#21262d;border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:16px">🔌</span>
+    <div><span style="color:#58a6ff;font-weight:bold">Camera Setup (one-time)</span>
+    <span style="color:#8b949e;margin-left:8px">— plug ESP32-CAM into Mac USB → portal detects via Web Serial API → enter WiFi password → flash → done</span></div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">Does this overall architecture look right? Reply in terminal ↓</p>

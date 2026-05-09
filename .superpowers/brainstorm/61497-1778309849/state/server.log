@@ -1,0 +1,9 @@
+{"type":"server-started","port":60851,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:60851","screen_dir":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content","state_dir":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/state"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/system-overview.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/approaches.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/design-architecture.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/design-pages.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/design-patient-perf.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/design-mobile-ui.html"}
+{"type":"screen-added","file":"/Users/pavithraharsaikron/Downloads/staysync/.superpowers/brainstorm/61497-1778309849/content/design-backend.html"}
+{"type":"server-stopped","reason":"idle timeout"}

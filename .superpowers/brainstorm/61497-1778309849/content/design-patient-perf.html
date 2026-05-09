@@ -1,0 +1,108 @@
+<h2>Patient Details + Performance Pages</h2>
+<p class="subtitle">Section 2 (updated) — AI-powered behavior analytics & patient profiles</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+
+  <!-- Patient Profile -->
+  <div style="background:#0d1117;border:1px solid #58a6ff;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">👤</span>
+      <span style="font-weight:bold;color:#58a6ff">/patients/:id</span>
+      <span style="font-size:11px;background:#1f6feb;color:#fff;padding:1px 8px;border-radius:4px">Patient Profile</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Name, age, photo, emergency contacts</li>
+      <li>Diagnosed conditions & medications</li>
+      <li>Daily routine schedule (wake, meals, meds, sleep)</li>
+      <li>Assigned cameras (which rooms)</li>
+      <li>Caregiver notes feed</li>
+      <li>Current AI risk level badge (Low / Medium / High)</li>
+    </ul>
+  </div>
+
+  <!-- Performance Overview -->
+  <div style="background:#0d1117;border:1px solid #a371f7;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">📊</span>
+      <span style="font-weight:bold;color:#a371f7">/patients/:id/performance</span>
+      <span style="font-size:11px;background:#6e40c9;color:#fff;padding:1px 8px;border-radius:4px">AI Analytics</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>📈 Daily confusion frequency chart (7/30 day)</li>
+      <li>🚶 Wandering incidents heatmap by time of day</li>
+      <li>💊 Medicine adherence % (detected vs scheduled)</li>
+      <li>⚠️ Fall risk trend score (AI-generated 0–100)</li>
+      <li>😴 Sleep pattern indicator (night movement)</li>
+      <li>📅 Weekly AI narrative summary (Gemma 4 report)</li>
+    </ul>
+  </div>
+
+  <!-- AI Suggestions Panel -->
+  <div style="background:#0d1117;border:1px solid #f78536;border-radius:10px;padding:16px;grid-column:span 2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">🤖</span>
+      <span style="font-weight:bold;color:#f0883e">AI Suggestions Engine (Gemma 4)</span>
+      <span style="font-size:11px;background:#f78536;color:#fff;padding:1px 8px;border-radius:4px">Core AI Feature</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px">
+      <div style="background:#21262d;border-radius:8px;padding:10px">
+        <div style="color:#f0883e;font-size:11px;font-weight:bold;margin-bottom:6px">REAL-TIME</div>
+        <div style="color:#8b949e;font-size:11px;line-height:1.8">
+          • "You seem confused — go to the kitchen"<br>
+          • "Time to take your blue pill"<br>
+          • "Someone is at the door, it's your daughter"<br>
+          • "Please sit down, you look unsteady"
+        </div>
+      </div>
+      <div style="background:#21262d;border-radius:8px;padding:10px">
+        <div style="color:#a371f7;font-size:11px;font-weight:bold;margin-bottom:6px">DAILY REPORT</div>
+        <div style="color:#8b949e;font-size:11px;line-height:1.8">
+          • Good/bad day score<br>
+          • Most confused time of day<br>
+          • Activities completed<br>
+          • Suggested routine adjustments
+        </div>
+      </div>
+      <div style="background:#21262d;border-radius:8px;padding:10px">
+        <div style="color:#3fb950;font-size:11px;font-weight:bold;margin-bottom:6px">WEEKLY INSIGHTS</div>
+        <div style="color:#8b949e;font-size:11px;line-height:1.8">
+          • Behavior trend (improving/declining)<br>
+          • Recommend caregiver schedule change<br>
+          • Flag for doctor review<br>
+          • Medication timing suggestions
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Behavior Timeline -->
+  <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">🕐</span>
+      <span style="font-weight:bold;color:#e6edf3">/patients/:id/timeline</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Chronological event log with photos</li>
+      <li>Filter by: alerts / normal / all</li>
+      <li>Each event shows AI reasoning</li>
+      <li>Exportable PDF for doctor visits</li>
+    </ul>
+  </div>
+
+  <!-- Caregiver Alerts -->
+  <div style="background:#0d1117;border:1px solid #da3633;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">🚨</span>
+      <span style="font-weight:bold;color:#f85149">/alerts  (enhanced)</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Push notification to caregiver's phone</li>
+      <li>Critical: fall / long wandering → immediate alert</li>
+      <li>AI confidence score per detection</li>
+      <li>One-tap "I'm handling it" dismiss</li>
+    </ul>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">Confirm to see Section 3 — backend API + Gemma 4 prompt design ↓</p>

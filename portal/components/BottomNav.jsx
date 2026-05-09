@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { href: '/dashboard', icon: '🏠', label: 'Home' },
-  { href: '/cameras', icon: '📷', label: 'Cameras' },
-  { href: '/patients', icon: '👤', label: 'Patients' },
-  { href: '/alerts', icon: '🚨', label: 'Alerts' }
+  { href: '/dashboard', icon: '/home.svg', label: 'Home' },
+  { href: '/cameras', icon: '/camera.svg', label: 'Cameras' },
+  { href: '/patients', icon: '/patients.svg', label: 'Patients' },
+  { href: '/alerts', icon: '/alerts.svg', label: 'Alerts' },
+  { href: '/feedback', icon: '/feedback.svg', label: 'AI' },
 ];
 
 export default function BottomNav() {
@@ -17,7 +18,14 @@ export default function BottomNav() {
         const active = path.startsWith(href);
         return (
           <Link key={href} href={href} className={`flex-1 flex flex-col items-center py-3 text-xs gap-1 ${active ? 'text-[#1f6feb]' : 'text-[#8b949e]'}`}>
-            <span className="text-xl">{icon}</span>
+            <img
+              src={icon}
+              alt={label}
+              className="w-6 h-6"
+              style={{ filter: active
+                ? 'invert(40%) sepia(90%) saturate(500%) hue-rotate(190deg) brightness(110%)'
+                : 'invert(60%) sepia(0%) saturate(0%) brightness(80%)' }}
+            />
             <span>{label}</span>
           </Link>
         );

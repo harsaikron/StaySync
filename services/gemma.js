@@ -66,4 +66,22 @@ Return ONLY valid JSON with no markdown: {"summary": "2-3 sentence narrative", "
   return JSON.parse(data.response);
 }
 
-module.exports = { analyseImage, generateSummary, PROMPTS };
+async function analyzeFeedback(feedbackItems) {
+  const feedbackText = feedbackItems.map((f, i) =>
+    `[${i + 1}] Category: ${f.category} | User: ${f.user_type}\nFeedback: ${f.message}`
+  ).join('\n\n');
+
+  const prompt = `You are an AI software architect for StaySync, a dementia care monitoring app. Caregivers and patients have submitted the following feedback tickets:\n\n${feedbackText}\n\nAnalyse all feedback and identify patterns. Generate concrete improvement proposals for the app.\n\nFor each improvement, suggest specific implementation details.\nReturn ONLY valid JSON with no markdown:\n{"improvements": [{"title": "short title", "description": "what to build and why", "code_suggestion": "key function or component to add/change (pseudocode ok)", "priority": "high|medium|low", "area": "camera|alerts|patients|navigation|performance|ai-detection"}], "summary": "2-3 sentences on overall feedback themes", "top_insight": "single most important finding"}`;
+
+  const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: OLLAMA_MODEL, prompt, stream: false, format: 'json' })
+  });
+
+  if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+  const data = await response.json();
+  return JSON.parse(data.response);
+}
+
+module.exports = { analyseImage, generateSummary, analyzeFeedback, PROMPTS };

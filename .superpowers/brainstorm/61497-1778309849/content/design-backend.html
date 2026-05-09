@@ -1,0 +1,108 @@
+<h2>Backend API + Gemma 4 + Setup Guide</h2>
+<p class="subtitle">Section 4 of 4 — How everything connects end-to-end</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+
+  <!-- Backend API -->
+  <div style="background:#0d1117;border:1px solid #238636;border-radius:10px;padding:16px">
+    <div style="color:#3fb950;font-weight:bold;margin-bottom:10px">🖥️ Express Backend API (localhost:3001)</div>
+    <div style="font-family:monospace;font-size:11px;line-height:2.2;color:#e6edf3">
+      <div><span style="color:#f78536">POST</span> <span style="color:#58a6ff">/upload/:cameraId</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">ESP32-CAM sends JPEG → runs Gemma 4 → returns guidance</div>
+      <div style="margin-top:4px"><span style="color:#3fb950">GET</span>  <span style="color:#58a6ff">/stream/:cameraId</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">SSE stream → pushes guidance to portal in real-time</div>
+      <div style="margin-top:4px"><span style="color:#3fb950">GET</span>  <span style="color:#58a6ff">/cameras</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">List all registered cameras + online status</div>
+      <div style="margin-top:4px"><span style="color:#f78536">POST</span> <span style="color:#58a6ff">/cameras/register</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">Register new camera with name + location</div>
+      <div style="margin-top:4px"><span style="color:#3fb950">GET</span>  <span style="color:#58a6ff">/patients/:id/performance</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">Returns analytics + AI weekly summary</div>
+      <div style="margin-top:4px"><span style="color:#3fb950">GET</span>  <span style="color:#58a6ff">/alerts?patientId=</span></div>
+      <div style="color:#8b949e;margin-left:12px;font-size:10px">Paginated alert log with photos + AI reasoning</div>
+    </div>
+  </div>
+
+  <!-- Gemma 4 Prompts -->
+  <div style="background:#0d1117;border:1px solid #a371f7;border-radius:10px;padding:16px">
+    <div style="color:#a371f7;font-weight:bold;margin-bottom:10px">🤖 Gemma 4 Detection Prompts</div>
+    <div style="font-size:11px;line-height:1.8">
+      <div style="background:#21262d;border-radius:6px;padding:8px;margin-bottom:6px">
+        <div style="color:#f85149;font-size:10px;font-weight:bold">CONFUSION / WANDERING</div>
+        <div style="color:#8b949e;font-size:10px">"Analyse this image of a dementia patient. Is the person standing still with a confused expression, wandering without purpose, or in an unfamiliar location? Return JSON: {detected: bool, severity: low|medium|critical, guidance: string}"</div>
+      </div>
+      <div style="background:#21262d;border-radius:6px;padding:8px;margin-bottom:6px">
+        <div style="color:#f78536;font-size:10px;font-weight:bold">FALL DETECTION</div>
+        <div style="color:#8b949e;font-size:10px">"Is the person in this image fallen, on the floor, or in an unsafe posture? Return JSON with severity and immediate guidance text."</div>
+      </div>
+      <div style="background:#21262d;border-radius:6px;padding:8px;margin-bottom:6px">
+        <div style="color:#58a6ff;font-size:10px;font-weight:bold">FACE RECOGNITION</div>
+        <div style="color:#8b949e;font-size:10px">"Are there multiple people visible? Describe the interaction. Is the patient calm or distressed with this person present?"</div>
+      </div>
+      <div style="background:#21262d;border-radius:6px;padding:8px">
+        <div style="color:#3fb950;font-size:10px;font-weight:bold">ROUTINE CHECK</div>
+        <div style="color:#8b949e;font-size:10px">"Based on time {time} and patient routine {routine}, is the patient doing the right activity? Provide gentle next-step guidance."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Guide -->
+  <div style="background:#0d1117;border:1px solid #58a6ff;border-radius:10px;padding:16px;grid-column:span 2">
+    <div style="color:#58a6ff;font-weight:bold;margin-bottom:12px">📋 Full Setup Guide — Step by Step</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+      <div>
+        <div style="color:#3fb950;font-size:11px;font-weight:bold;margin-bottom:6px">STEP 1 — Local Machine</div>
+        <div style="font-family:monospace;font-size:10px;background:#161b22;border-radius:6px;padding:8px;line-height:2;color:#e6edf3">
+          # Install Ollama<br>
+          brew install ollama<br>
+          ollama pull gemma4:12b-it<br><br>
+          # Install Cloudflare Tunnel<br>
+          brew install cloudflared<br>
+          cloudflared tunnel login<br>
+          cloudflared tunnel create staysync<br>
+          cloudflared tunnel route dns \<br>
+          &nbsp;staysync staysync.yourdomain.com<br><br>
+          # Start tunnel<br>
+          cloudflared tunnel run staysync
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#f78536;font-size:11px;font-weight:bold;margin-bottom:6px">STEP 2 — Backend + Vercel</div>
+        <div style="font-family:monospace;font-size:10px;background:#161b22;border-radius:6px;padding:8px;line-height:2;color:#e6edf3">
+          # Clone & install<br>
+          cd staysync<br>
+          npm install<br>
+          node server.js  # port 3001<br><br>
+          # Deploy frontend<br>
+          npx create-next-app portal<br>
+          cd portal<br>
+          # set NEXT_PUBLIC_API_URL=<br>
+          # https://staysync.yourdomain.com<br>
+          vercel deploy
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#a371f7;font-size:11px;font-weight:bold;margin-bottom:6px">STEP 3 — ESP32-CAM + Phone</div>
+        <div style="font-family:monospace;font-size:10px;background:#161b22;border-radius:6px;padding:8px;line-height:2;color:#e6edf3">
+          # Flash ESP32-CAM firmware<br>
+          # (Arduino IDE — provided)<br><br>
+          # In portal (Chrome on Mac):<br>
+          # /cameras/setup<br>
+          # → Plug USB → Connect<br>
+          # → Enter WiFi password<br>
+          # → Flash → Done ✓<br><br>
+          # Patient phone setup:<br>
+          # Open vercel URL in Chrome<br>
+          # Add to Home Screen (PWA)<br>
+          # Enable audio permissions
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">Full design complete — confirm to write the spec doc ↓</p>

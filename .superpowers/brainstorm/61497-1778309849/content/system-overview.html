@@ -1,0 +1,32 @@
+<h2>StaySync — Dementia Care System</h2>
+<p class="subtitle">System overview — let's confirm the architecture before diving into questions</p>
+
+<div class="section" style="background:#0d1117;border-radius:12px;padding:24px;margin:24px 0;font-family:monospace;font-size:13px;color:#e6edf3;line-height:1.8">
+  <div style="display:flex;align-items:flex-start;gap:32px;flex-wrap:wrap">
+
+    <div style="flex:1;min-width:160px;text-align:center">
+      <div style="background:#1f6feb;border-radius:8px;padding:12px 16px;color:#fff;font-weight:bold;margin-bottom:8px">📷 ESP32-CAM</div>
+      <div style="color:#8b949e;font-size:12px">Sends JPEG photos<br>over WiFi via HTTP POST</div>
+      <div style="margin:12px 0;color:#58a6ff">──────────▶</div>
+    </div>
+
+    <div style="flex:1;min-width:160px;text-align:center">
+      <div style="background:#388bfd22;border:1px solid #388bfd;border-radius:8px;padding:12px 16px;font-weight:bold;margin-bottom:8px">🖥️ Local Backend<br><span style="font-size:11px;color:#8b949e">Node.js / Python</span></div>
+      <div style="color:#8b949e;font-size:12px">• Receives photos<br>• Calls Gemma 4<br>• Returns guidance text</div>
+      <div style="margin:12px 0;color:#58a6ff">──────────▶</div>
+    </div>
+
+    <div style="flex:1;min-width:160px;text-align:center">
+      <div style="background:#238636;border-radius:8px;padding:12px 16px;color:#fff;font-weight:bold;margin-bottom:8px">🤖 Gemma 4 (Local)<br><span style="font-size:11px">via Ollama</span></div>
+      <div style="color:#8b949e;font-size:12px">Multimodal analysis<br>→ guidance text</div>
+    </div>
+
+  </div>
+
+  <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #30363d">
+    <div style="color:#8b949e;margin-bottom:8px">▼  guidance text</div>
+    <div style="background:#6e40c922;border:1px solid #6e40c9;border-radius:8px;padding:12px 24px;display:inline-block;font-weight:bold">🌐 Web Portal<br><span style="font-size:11px;color:#8b949e">Dashboard • Camera Management • Audio Output</span></div>
+  </div>
+</div>
+
+<p class="subtitle" style="text-align:center">Continuing question in terminal below ↓</p>

@@ -1,0 +1,87 @@
+<h2>Portal Pages — Section 2 of 3</h2>
+<p class="subtitle">What each page does and what the patient/caregiver sees</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+
+  <!-- Dashboard -->
+  <div style="background:#0d1117;border:1px solid #238636;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">🏠</span>
+      <span style="font-weight:bold;color:#3fb950">/dashboard</span>
+      <span style="font-size:11px;background:#238636;color:#fff;padding:1px 8px;border-radius:4px">Home</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Live camera feed grid (all registered cameras)</li>
+      <li>Latest Gemma 4 analysis per camera</li>
+      <li>Active alert banner (fall / wandering detected)</li>
+      <li>🔊 "Speak now" button — plays guidance via TTS</li>
+      <li>Auto-speak toggle (hands-free mode)</li>
+    </ul>
+  </div>
+
+  <!-- Camera Setup -->
+  <div style="background:#0d1117;border:1px solid #1f6feb;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">📷</span>
+      <span style="font-weight:bold;color:#58a6ff">/cameras/setup</span>
+      <span style="font-size:11px;background:#1f6feb;color:#fff;padding:1px 8px;border-radius:4px">Key Feature</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Plug in ESP32-CAM via USB</li>
+      <li>"Connect Camera" button → Web Serial API</li>
+      <li>Enter home WiFi SSID + password</li>
+      <li>One-click flash credentials to device</li>
+      <li>Name the camera (e.g. "Living Room")</li>
+      <li>Camera appears in dashboard instantly</li>
+    </ul>
+  </div>
+
+  <!-- Cameras List -->
+  <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">📋</span>
+      <span style="font-weight:bold;color:#e6edf3">/cameras</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>List all registered cameras</li>
+      <li>Online / offline status indicator</li>
+      <li>Last seen timestamp</li>
+      <li>Add new / remove camera</li>
+      <li>Link to individual camera live view</li>
+    </ul>
+  </div>
+
+  <!-- Guidance / Alert Log -->
+  <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">📝</span>
+      <span style="font-weight:bold;color:#e6edf3">/alerts</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Full history of Gemma 4 detections</li>
+      <li>Severity badge: Info / Warning / Critical</li>
+      <li>Thumbnail of the triggering photo</li>
+      <li>Guidance text that was spoken</li>
+      <li>Timestamp + camera name</li>
+    </ul>
+  </div>
+
+  <!-- Patient View -->
+  <div style="background:#0d1117;border:1px solid #f78536;border-radius:10px;padding:16px;grid-column:span 2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:18px">📱</span>
+      <span style="font-weight:bold;color:#f0883e">/patient  </span>
+      <span style="font-size:11px;background:#f78536;color:#fff;padding:1px 8px;border-radius:4px">Patient-facing — simplified</span>
+    </div>
+    <ul style="color:#8b949e;font-size:12px;margin:0 0 0 16px;padding:0;line-height:2">
+      <li>Large text display of current guidance ("Time to take your medicine 💊")</li>
+      <li>Auto-speaks via Web Speech API when new guidance arrives (SSE)</li>
+      <li>Big "Repeat" button to replay last message</li>
+      <li>Calming background, no distracting UI</li>
+      <li>Works as a bookmark on the home screen — full-screen PWA</li>
+    </ul>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">Does the page structure look right? Reply in terminal ↓</p>

@@ -1,0 +1,56 @@
+<h2>Proposed Architecture Approaches</h2>
+<p class="subtitle">Three ways to build the StaySync dementia care system</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Next.js + Node.js (Recommended)</h3>
+      <p><strong>Frontend:</strong> Next.js on Vercel &nbsp;|&nbsp; <strong>Backend:</strong> Express + Ollama (local)</p>
+      <ul style="margin:8px 0 0 16px;padding:0;font-size:13px;color:#8b949e">
+        <li>Next.js deploys perfectly to Vercel, built-in API routes</li>
+        <li>Your existing Express project becomes the local backend</li>
+        <li>Ollama serves Gemma 4 vision locally via HTTP</li>
+        <li>Cloudflare Tunnel exposes local backend to Vercel</li>
+        <li>Web Serial API handles USB camera setup in browser</li>
+        <li>Browser TTS (Web Speech API) for audio guidance</li>
+      </ul>
+      <div style="margin-top:10px;font-size:12px;background:#238636;color:#fff;display:inline-block;padding:2px 10px;border-radius:4px">Least context switching — stays in JS</div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Next.js + Python FastAPI</h3>
+      <p><strong>Frontend:</strong> Next.js on Vercel &nbsp;|&nbsp; <strong>Backend:</strong> FastAPI + Ollama (local)</p>
+      <ul style="margin:8px 0 0 16px;padding:0;font-size:13px;color:#8b949e">
+        <li>Python backend is more natural for AI/ML workflows</li>
+        <li>FastAPI has async support for concurrent camera uploads</li>
+        <li>Better ecosystem if you add more AI features later</li>
+        <li>Requires running two separate local processes</li>
+      </ul>
+      <div style="margin-top:10px;font-size:12px;background:#6e40c9;color:#fff;display:inline-block;padding:2px 10px;border-radius:4px">Best if you know Python</div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Fully Local (No Vercel)</h3>
+      <p><strong>Frontend + Backend:</strong> All on your Mac (Express serves React)</p>
+      <ul style="margin:8px 0 0 16px;padding:0;font-size:13px;color:#8b949e">
+        <li>Simpler — one process, no tunnel needed</li>
+        <li>Access from phone via local IP (same WiFi required)</li>
+        <li>No internet dependency at all</li>
+        <li>Phone must be on same WiFi as Mac always</li>
+        <li>No Vercel URL to share, harder to demo for Kaggle</li>
+      </ul>
+      <div style="margin-top:10px;font-size:12px;background:#6e3535;color:#fff;display:inline-block;padding:2px 10px;border-radius:4px">Limited for Kaggle demo</div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">Click your preferred approach, then confirm in the terminal ↓</p>
