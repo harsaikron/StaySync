@@ -16,12 +16,26 @@ export default function CameraSetupPage() {
   const addLog = (msg) => setLog(prev => [...prev, msg]);
 
   const connectSerial = async () => {
+    setStatus('connecting');
+    addLog('Requesting serial port access...');
+    let p = port;
     try {
-      setStatus('connecting');
-      addLog('Requesting serial port access...');
-      const p = await navigator.serial.requestPort();
-      await p.open({ baudRate: BAUD_RATE });
-      setPort(p);
+      if (!p) {
+        p = await navigator.serial.requestPort();
+        setPort(p);
+      }
+      // Port may be busy briefly after ESP32 DTR-reset — retry open up to 5 times
+      for (let attempt = 1; attempt <= 5; attempt++) {
+        try {
+          if (p.readable) break; // already open
+          await p.open({ baudRate: BAUD_RATE });
+          break;
+        } catch (openErr) {
+          if (attempt === 5) throw openErr;
+          addLog(`Waiting for port… (attempt ${attempt})`);
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
       setStatus('connected');
       addLog('✓ ESP32-CAM connected via USB serial');
     } catch (err) {

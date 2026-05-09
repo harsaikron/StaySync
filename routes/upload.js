@@ -10,7 +10,29 @@ const router = express.Router();
 
 const ALL_TYPES = ['confusion', 'fall', 'face', 'routine'];
 
-router.post('/:cameraId', upload.single('photo'), async (req, res) => {
+// Accept both raw JPEG body (from ESP32) and multipart/form-data (from browser)
+function ingestPhoto(req, res, next) {
+  const ct = (req.headers['content-type'] || '').split(';')[0].trim();
+  if (ct === 'image/jpeg' || ct === 'image/jpg') {
+    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const filename = `${req.params.cameraId}-${Date.now()}.jpg`;
+    const filePath = path.join(uploadDir, filename);
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      const buf = Buffer.concat(chunks);
+      fs.writeFileSync(filePath, buf);
+      req.file = { path: filePath, filename, size: buf.length };
+      next();
+    });
+    req.on('error', next);
+  } else {
+    upload.single('photo')(req, res, next);
+  }
+}
+
+router.post('/:cameraId', ingestPhoto, async (req, res) => {
   const { cameraId } = req.params;
   if (!req.file) return res.status(400).json({ error: 'No photo uploaded' });
 
