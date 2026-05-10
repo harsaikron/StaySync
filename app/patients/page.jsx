@@ -5,16 +5,45 @@ import Link from 'next/link';
 import PatientForm from '@/components/PatientForm';
 import Icon from '@/components/Icon';
 
+function loadLocalPatients() {
+  try { return JSON.parse(localStorage.getItem('staysync-local-patients') || '[]'); } catch { return []; }
+}
+function saveLocalPatient(p) {
+  try {
+    const existing = loadLocalPatients();
+    const updated = [...existing.filter(x => x.id !== p.id), p];
+    localStorage.setItem('staysync-local-patients', JSON.stringify(updated));
+  } catch {}
+}
+
 export default function PatientsPage() {
   const [patients, setPatients] = useState([]);
   const [adding, setAdding] = useState(false);
-  const load = () => get('/patients').then(setPatients).catch(() => {});
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    const local = loadLocalPatients();
+    get('/patients')
+      .then(remote => {
+        const remoteIds = new Set(remote.map(p => p.id));
+        setPatients([...remote, ...local.filter(p => !remoteIds.has(p.id))]);
+      })
+      .catch(() => setPatients(local));
+  };
+
   useEffect(() => { load(); }, []);
 
   const save = async (data) => {
-    await post('/patients', data);
+    setSaving(true);
+    // Generate a local id if none
+    const patient = { ...data, id: data.id || `patient-${Date.now()}` };
+    // Always save locally first so it appears immediately
+    saveLocalPatient(patient);
     setAdding(false);
     load();
+    // Try backend (non-fatal)
+    try { await post('/patients', patient); load(); } catch {}
+    setSaving(false);
   };
 
   return (
@@ -25,16 +54,20 @@ export default function PatientsPage() {
           <h1 className="text-2xl font-bold text-white">Patients</h1>
         </div>
         <button onClick={() => setAdding(v => !v)}
-          className={`text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors
-            ${adding ? 'bg-[#1a1a1a] border border-[#333] text-[#888]' : 'bg-blue-600 text-white'}`}>
-          <Icon name={adding ? 'x' : 'plus'} size={16} />
+          className="text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
+          style={{
+            background: adding ? 'var(--surface,#1a1a1a)' : 'var(--blue,#2563eb)',
+            border: adding ? '1px solid var(--border,#333)' : 'none',
+            color: '#ffffff',
+          }}>
+          <Icon name={adding ? 'x' : 'plus'} size={16} color="#ffffff" />
           {adding ? 'Cancel' : 'Add Patient'}
         </button>
       </div>
 
       {adding && (
         <div className="bg-[#111] border border-[#222] rounded-xl p-4 mb-4">
-          <PatientForm onSave={save} onCancel={() => setAdding(false)} />
+          <PatientForm onSave={save} onCancel={() => setAdding(false)} saving={saving} />
         </div>
       )}
 

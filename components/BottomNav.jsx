@@ -4,11 +4,10 @@ import { usePathname } from 'next/navigation';
 import Icon from '@/components/Icon';
 
 const tabs = [
-  { href: '/dashboard', icon: 'home',    label: 'Home' },
-  { href: '/cameras',   icon: 'camera',  label: 'Cameras' },
-  { href: '/patients',  icon: 'users',   label: 'Patients' },
-  { href: '/alerts',    icon: 'bell',    label: 'Alerts' },
-  { href: '/feedback',  icon: 'bot',     label: 'AI' },
+  { href: '/dashboard', icon: 'home',     label: 'Home' },
+  { href: '/cameras',   icon: 'camera',   label: 'Cameras' },
+  { href: '/patients',  icon: 'users',    label: 'Patients' },
+  { href: '/settings',  icon: 'settings', label: 'Settings' },
 ];
 
 export default function BottomNav() {

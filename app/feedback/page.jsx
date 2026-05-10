@@ -195,8 +195,9 @@ export default function FeedbackPage() {
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 py-2.5 px-1 rounded-xl text-center transition-colors flex flex-col items-center gap-1
-              ${tab === t.id ? 'bg-blue-600 text-white' : 'bg-[#111] border border-[#222] text-[#666]'}`}>
-            <Icon name={t.icon} size={16} />
+              ${tab === t.id ? 'bg-blue-600' : 'bg-[#111] border border-[#222]'}`}
+            style={{ color: tab === t.id ? '#ffffff' : '#666' }}>
+            <Icon name={t.icon} size={16} color={tab === t.id ? '#ffffff' : '#666'} />
             <span className="text-xs font-medium">{t.label}</span>
           </button>
         ))}
@@ -214,7 +215,8 @@ export default function FeedbackPage() {
               {['caregiver', 'patient', 'developer'].map(t => (
                 <button key={t} onClick={() => setForm(f => ({ ...f, user_type: t }))}
                   className={`flex-1 py-2.5 rounded-xl text-sm border font-medium transition-colors ${form.user_type === t
-                    ? 'border-blue-600 text-white bg-blue-950' : 'border-[#333] text-[#666]'}`}>
+                    ? 'bg-blue-600 border-blue-600' : 'border-[#333]'}`}
+                  style={{ color: form.user_type === t ? '#ffffff' : '#666' }}>
                   {t}
                 </button>
               ))}
@@ -227,8 +229,9 @@ export default function FeedbackPage() {
               {CATEGORIES.map(c => (
                 <button key={c.value} onClick={() => setForm(f => ({ ...f, category: c.value }))}
                   className={`py-2.5 px-3 rounded-xl text-sm text-left border flex items-center gap-2 transition-colors ${form.category === c.value
-                    ? 'border-blue-600 text-white bg-blue-950' : 'border-[#333] text-[#666]'}`}>
-                  <Icon name={c.icon} size={14} />
+                    ? 'bg-blue-600 border-blue-600' : 'border-[#333]'}`}
+                  style={{ color: form.category === c.value ? '#ffffff' : '#666' }}>
+                  <Icon name={c.icon} size={14} color={form.category === c.value ? '#ffffff' : '#666'} />
                   {c.label}
                 </button>
               ))}
