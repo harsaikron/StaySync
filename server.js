@@ -28,6 +28,28 @@ app.get('/stream-snapshot/:cameraId', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
 
+// AI ask endpoint for FloatingAI
+const { OLLAMA_URL = 'http://localhost:11434', OLLAMA_MODEL = 'gemma4:e4b' } = process.env;
+app.post('/ai/ask', async (req, res) => {
+  const { question, context } = req.body || {};
+  if (!question) return res.status(400).json({ error: 'question required' });
+
+  const prompt = `You are a warm, caring AI companion for a dementia care app called StaySync. A caregiver or patient has asked you a question.\n\nContext (last guidance if any): ${context || 'none'}\n\nQuestion: ${question}\n\nAnswer helpfully and warmly in 1-2 sentences. Be reassuring and clear.`;
+
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: OLLAMA_MODEL, prompt, stream: false }),
+    });
+    if (!response.ok) throw new Error(`Ollama ${response.status}`);
+    const data = await response.json();
+    res.json({ answer: data.response?.trim() || "I'm here with you. How can I help?" });
+  } catch {
+    res.json({ answer: "I'm here with you. How can I help?" });
+  }
+});
+
 app.use('/cameras', require('./routes/cameras'));
 app.use('/patients', require('./routes/patients'));
 app.use('/upload', require('./routes/upload'));

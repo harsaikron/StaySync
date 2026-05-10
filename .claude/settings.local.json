@@ -52,7 +52,27 @@
       "Bash(git -C /Users/pavithraharsaikron/Downloads/staysync add portal/components/CameraGrid.jsx portal/components/BrowserCamera.jsx portal/app/cameras/setup/page.jsx portal/app/dashboard/page.jsx)",
       "Bash(git -C /Users/pavithraharsaikron/Downloads/staysync commit -m \"feat: refresh button on camera cards, Mac/phone browser camera support, 10s auto-refresh\")",
       "Bash(vercel --prod --yes)",
-      "Bash(~/.npm/_npx/*/node_modules/.bin/vercel --prod --yes)"
+      "Bash(~/.npm/_npx/*/node_modules/.bin/vercel --prod --yes)",
+      "Bash(vercel --version)",
+      "Bash(npm view *)",
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(v[-10:]\\)\\)\")",
+      "Bash(vercel --prod)",
+      "Bash(node -e \"const icons = require\\('/Users/pavithraharsaikron/Downloads/staysync/portal/components/Icon.jsx'\\); console.log\\('ok'\\)\")",
+      "Bash(ssh-keygen -l -f ~/.ssh/id_rsa.pub)",
+      "Bash(ssh-keygen -l -f ~/.ssh/id_ed25519.pub)",
+      "Read(//Users/pavithraharsaikron/**)",
+      "Bash(curl -s https://lloyd-ethical-michael-locale.trycloudflare.com/health)",
+      "Bash(curl -sv https://lloyd-ethical-michael-locale.trycloudflare.com/health)",
+      "Bash(curl -s http://localhost:2000/metrics)",
+      "Bash(curl -s http://localhost:2000/healthcheck)",
+      "Bash(curl -s http://localhost:8080/metrics)",
+      "Bash(kill 69024)",
+      "Bash(kill 9528)",
+      "Read(//tmp/**)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(git checkout *)",
+      "Bash(git rm *)"
     ]
   }
 }
