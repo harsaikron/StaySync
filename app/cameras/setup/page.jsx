@@ -113,16 +113,23 @@ void setup() {
   cfg.pin_d6=Y8_GPIO_NUM; cfg.pin_d7=Y9_GPIO_NUM;
   cfg.pin_xclk=XCLK_GPIO_NUM; cfg.pin_pclk=PCLK_GPIO_NUM;
   cfg.pin_vsync=VSYNC_GPIO_NUM; cfg.pin_href=HREF_GPIO_NUM;
-  cfg.pin_sscb_sda=SIOD_GPIO_NUM; cfg.pin_sscb_scl=SIOC_GPIO_NUM;
+  cfg.pin_sda=SIOD_GPIO_NUM; cfg.pin_scl=SIOC_GPIO_NUM;
   cfg.pin_pwdn=PWDN_GPIO_NUM; cfg.pin_reset=RESET_GPIO_NUM;
   cfg.xclk_freq_hz=20000000; cfg.pixel_format=PIXFORMAT_JPEG;
   cfg.frame_size=FRAMESIZE_VGA; cfg.jpeg_quality=12; cfg.fb_count=1;
   if (esp_camera_init(&cfg) != ESP_OK) { Serial.println("Camera init failed"); return; }
 
+  Serial.println("SSID: " + ssid);
+  Serial.println("Server: " + serverUrl);
+  Serial.println("Camera ID: " + cameraId);
   WiFi.begin(ssid.c_str(), password.c_str());
-  Serial.print("Connecting");
+  Serial.print("Connecting to WiFi");
   for (int i=0; i<30 && WiFi.status()!=WL_CONNECTED; i++) { delay(500); Serial.print("."); }
-  Serial.println(WiFi.status()==WL_CONNECTED ? "\\nConnected: "+WiFi.localIP().toString() : "\\nFailed");
+  if (WiFi.status()==WL_CONNECTED) {
+    Serial.println("\\nWiFi connected! IP: " + WiFi.localIP().toString());
+  } else {
+    Serial.println("\\nWiFi FAILED - check SSID/password and reconnect via USB");
+  }
 }
 
 void loop() {
@@ -133,7 +140,11 @@ void loop() {
   http.begin(serverUrl+"/upload/"+cameraId);
   http.addHeader("Content-Type","image/jpeg");
   int code = http.POST(fb->buf, fb->len);
-  Serial.printf("Upload %d (%d bytes)\\n", code, fb->len);
+  if (code == 200) {
+    Serial.printf("✓ Upload OK (%d bytes)\\n", fb->len);
+  } else {
+    Serial.printf("✗ Upload failed HTTP %d - check server URL\\n", code);
+  }
   http.end();
   esp_camera_fb_return(fb);
   delay(5000);
