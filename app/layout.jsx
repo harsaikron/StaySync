@@ -2,8 +2,6 @@ import './globals.css';
 import { TTSProvider } from '@/providers/TTSProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import BottomNav from '@/components/BottomNav';
-import FloatingAI from '@/components/FloatingAI';
-import ScheduleReminder from '@/components/ScheduleReminder';
 
 export const metadata = {
   title: 'StaySync',
@@ -22,8 +20,6 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           <TTSProvider>
             {children}
-            <ScheduleReminder />
-            <FloatingAI />
             <BottomNav />
           </TTSProvider>
         </ThemeProvider>
