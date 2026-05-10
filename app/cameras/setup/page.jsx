@@ -44,15 +44,24 @@ function InputBox({ value, onChange, placeholder, type = 'text' }) {
   );
 }
 
-const ESP32_SKETCH = `// StaySync ESP32-CAM Firmware
-// Flash this first via Arduino IDE, THEN use this page to configure WiFi.
-// Board: "AI Thinker ESP32-CAM" | Libraries: ArduinoJson, esp32 board package
+const ESP32_SKETCH = `// ╔══════════════════════════════════════════════════════╗
+// ║         StaySync ESP32-CAM — FILL IN BELOW          ║
+// ╚══════════════════════════════════════════════════════╝
+
+#define WIFI_SSID      "YOUR_WIFI_NAME"       // <-- change this
+#define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"   // <-- change this
+#define SERVER_URL     "https://YOUR-BACKEND.trycloudflare.com"  // <-- change this
+#define CAMERA_ID      "esp32-cam-1"          // <-- give this camera a unique name
+
+// ════════════════════════════════════════════════════════
+// Board: AI Thinker ESP32-CAM
+// Libraries needed: esp32 board package (Espressif)
+//   NO extra libraries required!
+// ════════════════════════════════════════════════════════
 
 #include "esp_camera.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <Preferences.h>
-#include <ArduinoJson.h>
 
 #define PWDN_GPIO_NUM  32
 #define RESET_GPIO_NUM -1
@@ -71,40 +80,13 @@ const ESP32_SKETCH = `// StaySync ESP32-CAM Firmware
 #define HREF_GPIO_NUM  23
 #define PCLK_GPIO_NUM  22
 
-Preferences prefs;
-String ssid, password, serverUrl, cameraId;
-
 void setup() {
   Serial.begin(115200);
   delay(1000);
-
-  prefs.begin("staysync", false);
-  ssid      = prefs.getString("ssid", "");
-  password  = prefs.getString("pass", "");
-  serverUrl = prefs.getString("url",  "");
-  cameraId  = prefs.getString("cam",  "esp32-cam");
-
-  // Wait 4s for config JSON from StaySync portal
-  unsigned long t0 = millis();
-  String buf = "";
-  while (millis() - t0 < 4000) {
-    while (Serial.available()) { buf += (char)Serial.read(); t0 = millis(); }
-  }
-  if (buf.length() > 2) {
-    StaticJsonDocument<512> doc;
-    if (!deserializeJson(doc, buf)) {
-      ssid      = doc["ssid"]      | ssid;
-      password  = doc["password"]  | password;
-      serverUrl = doc["server_url"]| serverUrl;
-      cameraId  = doc["camera_id"] | cameraId;
-      prefs.putString("ssid", ssid);
-      prefs.putString("pass", password);
-      prefs.putString("url",  serverUrl);
-      prefs.putString("cam",  cameraId);
-      Serial.println("Config saved!");
-    }
-  }
-  prefs.end();
+  Serial.println("\\n=== StaySync ESP32-CAM ===");
+  Serial.println("WiFi: " + String(WIFI_SSID));
+  Serial.println("Server: " + String(SERVER_URL));
+  Serial.println("Camera ID: " + String(CAMERA_ID));
 
   camera_config_t cfg;
   cfg.ledc_channel = LEDC_CHANNEL_0; cfg.ledc_timer = LEDC_TIMER_0;
@@ -117,33 +99,44 @@ void setup() {
   cfg.pin_pwdn=PWDN_GPIO_NUM; cfg.pin_reset=RESET_GPIO_NUM;
   cfg.xclk_freq_hz=20000000; cfg.pixel_format=PIXFORMAT_JPEG;
   cfg.frame_size=FRAMESIZE_VGA; cfg.jpeg_quality=12; cfg.fb_count=1;
-  if (esp_camera_init(&cfg) != ESP_OK) { Serial.println("Camera init failed"); return; }
 
-  Serial.println("SSID: " + ssid);
-  Serial.println("Server: " + serverUrl);
-  Serial.println("Camera ID: " + cameraId);
-  WiFi.begin(ssid.c_str(), password.c_str());
+  if (esp_camera_init(&cfg) != ESP_OK) {
+    Serial.println("ERROR: Camera init failed — check board selection (AI Thinker ESP32-CAM)");
+    return;
+  }
+  Serial.println("Camera OK");
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to WiFi");
-  for (int i=0; i<30 && WiFi.status()!=WL_CONNECTED; i++) { delay(500); Serial.print("."); }
-  if (WiFi.status()==WL_CONNECTED) {
-    Serial.println("\\nWiFi connected! IP: " + WiFi.localIP().toString());
+  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500); Serial.print(".");
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\\nConnected! IP: " + WiFi.localIP().toString());
+    Serial.println("Sending frames every 5 seconds...");
   } else {
-    Serial.println("\\nWiFi FAILED - check SSID/password and reconnect via USB");
+    Serial.println("\\nERROR: WiFi failed — check WIFI_SSID and WIFI_PASSWORD at top of sketch");
   }
 }
 
 void loop() {
-  if (WiFi.status()!=WL_CONNECTED || ssid.isEmpty()) { delay(5000); return; }
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi lost — reconnecting...");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    delay(5000);
+    return;
+  }
   camera_fb_t* fb = esp_camera_fb_get();
-  if (!fb) { delay(5000); return; }
+  if (!fb) { Serial.println("Camera capture failed"); delay(3000); return; }
   HTTPClient http;
-  http.begin(serverUrl+"/upload/"+cameraId);
+  String url = String(SERVER_URL) + "/upload/" + String(CAMERA_ID);
+  http.begin(url);
   http.addHeader("Content-Type","image/jpeg");
   int code = http.POST(fb->buf, fb->len);
   if (code == 200) {
-    Serial.printf("✓ Upload OK (%d bytes)\\n", fb->len);
+    Serial.printf("Frame sent OK (%d bytes)\\n", fb->len);
   } else {
-    Serial.printf("✗ Upload failed HTTP %d - check server URL\\n", code);
+    Serial.printf("Upload failed HTTP %d — check SERVER_URL at top of sketch\\n", code);
   }
   http.end();
   esp_camera_fb_return(fb);
@@ -151,8 +144,12 @@ void loop() {
 }`;
 
 function ArduinoSketchSection() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true); // open by default so users see it
   const [copied, setCopied] = useState(false);
+
+  // Read backend URL from localStorage for hint
+  const backendUrl = typeof window !== 'undefined'
+    ? (localStorage.getItem('staysync-backend-url') || '') : '';
 
   const copy = () => {
     navigator.clipboard.writeText(ESP32_SKETCH).then(() => {
@@ -162,36 +159,72 @@ function ArduinoSketchSection() {
   };
 
   return (
-    <div>
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #fbbf24' }}>
+      {/* Header */}
       <button onClick={() => setOpen(v => !v)}
-        className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-        style={{ background: '#451a03', border: '1px solid #92400e', color: '#fbbf24' }}>
-        <Icon name="warning" size={15} color="#fbbf24" />
-        Step 0 — Flash Arduino firmware first (required)
+        className="w-full px-4 py-3.5 flex items-center justify-between"
+        style={{ background: '#fffbeb' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">📋</span>
+          <div className="text-left">
+            <p className="text-sm font-bold" style={{ color: '#92400e' }}>Step 1 — Flash this sketch to your ESP32-CAM</p>
+            <p className="text-xs" style={{ color: '#b45309' }}>Fill in your WiFi & URL at the top, then upload via Arduino IDE</p>
+          </div>
+        </div>
+        <span style={{ color: '#b45309' }}>{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div className="mt-3 rounded-xl overflow-hidden"
-          style={{ border: '1px solid #92400e' }}>
-          <div className="px-4 py-3 space-y-2" style={{ background: '#1c0a00' }}>
-            <p className="text-sm font-semibold" style={{ color: '#fbbf24' }}>
-              Your ESP32-CAM needs this firmware before WiFi config will work.
-            </p>
-            <div className="space-y-1.5 text-sm" style={{ color: '#d97706' }}>
-              <p>① Install <strong>Arduino IDE</strong> and add the ESP32 board package</p>
-              <p>② Install library: <span className="font-mono text-white">ArduinoJson</span> (Benoit Blanchon)</p>
-              <p>③ Board setting: <span className="font-mono text-white">AI Thinker ESP32-CAM</span></p>
-              <p>④ Copy the sketch below → paste into Arduino IDE → Upload</p>
-              <p>⑤ Come back here and click "Connect Camera via USB" to send WiFi config</p>
+        <div style={{ background: '#ffffff' }}>
+          {/* What to fill in — highlighted box */}
+          <div className="mx-4 mt-4 rounded-xl p-4 space-y-3" style={{ background: '#fef3c7', border: '2px solid #fbbf24' }}>
+            <p className="text-sm font-bold" style={{ color: '#92400e' }}>✏️ Fill in these 3 values in the sketch before uploading:</p>
+            <div className="space-y-2 text-sm font-mono">
+              <div className="flex items-start gap-2">
+                <span style={{ color: '#dc2626', fontWeight: 700 }}>1.</span>
+                <span style={{ color: '#374151' }}><strong>WIFI_SSID</strong> — your WiFi name (e.g. "StarHub_4594")</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span style={{ color: '#dc2626', fontWeight: 700 }}>2.</span>
+                <span style={{ color: '#374151' }}><strong>WIFI_PASSWORD</strong> — your WiFi password</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span style={{ color: '#dc2626', fontWeight: 700 }}>3.</span>
+                <div style={{ color: '#374151' }}>
+                  <strong>SERVER_URL</strong> — your public backend URL
+                  {backendUrl && !backendUrl.includes('localhost') && (
+                    <div className="mt-1 text-xs px-2 py-1 rounded-lg" style={{ background: '#d1fae5', color: '#065f46' }}>
+                      ✓ Your current URL: {backendUrl}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="relative" style={{ background: '#0a0a0a', borderTop: '1px solid #333' }}>
-            <button onClick={copy}
-              className="absolute top-3 right-3 px-3 py-1.5 rounded-lg text-xs font-semibold z-10"
-              style={{ background: copied ? '#166534' : '#1e3a8a', color: copied ? '#4ade80' : '#93c5fd' }}>
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-            <pre className="p-4 text-xs overflow-x-auto" style={{ color: '#aaa', maxHeight: 260, fontFamily: 'monospace' }}>
+
+          {/* Steps */}
+          <div className="px-4 py-3 space-y-1.5 text-sm" style={{ color: '#374151' }}>
+            <p className="font-semibold text-xs uppercase tracking-wide mb-2" style={{ color: '#9ca3af' }}>Arduino IDE Steps</p>
+            <p>① Open Arduino IDE → paste the sketch below</p>
+            <p>② Fill in WiFi name, password, and backend URL at the <strong>top of the sketch</strong></p>
+            <p>③ Tools → Board → <strong>AI Thinker ESP32-CAM</strong></p>
+            <p>④ Tools → Port → pick your ESP32 port</p>
+            <p>⑤ Hold <strong>IO0 button</strong> → click Upload → release IO0 when "Connecting..."</p>
+            <p>⑥ Press <strong>EN button</strong> to reboot after upload</p>
+            <p>⑦ Open Serial Monitor (115200 baud) to see connection status</p>
+          </div>
+
+          {/* Sketch code */}
+          <div className="relative mx-4 mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
+            <div className="flex items-center justify-between px-4 py-2" style={{ background: '#1e293b' }}>
+              <span className="text-xs font-mono" style={{ color: '#94a3b8' }}>staysync_esp32cam.ino</span>
+              <button onClick={copy}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold"
+                style={{ background: copied ? '#16a34a' : '#2563eb', color: '#ffffff' }}>
+                {copied ? '✓ Copied!' : '📋 Copy Sketch'}
+              </button>
+            </div>
+            <pre className="p-4 text-xs overflow-x-auto" style={{ color: '#e2e8f0', maxHeight: 300, fontFamily: 'monospace', background: '#0f172a' }}>
               {ESP32_SKETCH}
             </pre>
           </div>
