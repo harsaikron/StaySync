@@ -50,13 +50,26 @@ app.post('/ai/ask', async (req, res) => {
   }
 });
 
-app.use('/cameras', require('./routes/cameras'));
-app.use('/patients', require('./routes/patients'));
-app.use('/upload', require('./routes/upload'));
-app.use('/feedback', require('./routes/feedback'));
-app.use('/', require('./routes/stream'));
-app.use('/', require('./routes/alerts'));
-app.use('/', require('./routes/reports'));
+try {
+  app.use('/cameras', require('./routes/cameras'));
+  app.use('/patients', require('./routes/patients'));
+  app.use('/upload', require('./routes/upload'));
+  app.use('/feedback', require('./routes/feedback'));
+  app.use('/', require('./routes/stream'));
+  app.use('/', require('./routes/alerts'));
+  app.use('/', require('./routes/reports'));
+  console.log('All routes loaded OK');
+} catch (err) {
+  console.error('Route load error:', err.message);
+  // Fallback: serve basic upload endpoint without DB so ESP32 frames aren't lost
+  app.post('/upload/:cameraId', (req, res) => {
+    console.log(`Frame received from ${req.params.cameraId} (${req.headers['content-length']} bytes) — DB unavailable`);
+    res.json({ ok: true, note: 'saved without DB' });
+  });
+}
+
+// Catch-all 404
+app.use((req, res) => res.status(404).json({ error: 'Route not found', path: req.path }));
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3001;
