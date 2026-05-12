@@ -265,22 +265,22 @@ function CameraDetailContent() {
             <div className="p-4 space-y-3">
               {[
                 { n: 1, color: '#dc2626', bg: '#fef2f2', border: '#fecaca',
-                  title: 'Flash Arduino firmware first',
-                  body: 'Go to Camera Setup → ESP32-CAM tab → expand "Step 0 — Flash Arduino firmware first" → copy the sketch → upload via Arduino IDE.',
+                  title: 'Flash the Arduino sketch',
+                  body: 'Go to Camera Setup → open the yellow "Step 1 — Flash this sketch" box → copy the sketch → open Arduino IDE → paste it → fill in WIFI_SSID, WIFI_PASSWORD, and SERVER_URL at the top → upload to ESP32-CAM.',
                   link: '/cameras/setup', linkLabel: 'Camera Setup →' },
                 { n: 2, color: '#d97706', bg: '#fffbeb', border: '#fde68a',
-                  title: 'Send WiFi credentials via USB',
-                  body: 'Connect ESP32 via USB → click "Connect Camera via USB" → fill WiFi name, password, and your backend URL → click Flash.',
+                  title: 'Important: use 2.4 GHz WiFi only',
+                  body: 'ESP32-CAM cannot connect to 5 GHz networks. If your router shows one SSID for both bands, go to your router admin (usually http://192.168.0.1) and enable a separate 2.4 GHz network. Or test with an iPhone hotspot — it always works.',
                   link: null },
                 { n: 3, color: '#059669', bg: '#f0fdf4', border: '#bbf7d0',
-                  title: 'Backend URL must be a public URL',
+                  title: 'Backend URL must be set',
                   body: backendOk
-                    ? `✓ You have a backend URL set: ${backendUrl.slice(0, 40)}${backendUrl.length > 40 ? '…' : ''}`
-                    : 'No public backend URL found. Go to Settings → Camera → enter your Railway/Render/tunnel URL.',
+                    ? `✓ Backend URL set: ${backendUrl.slice(0, 40)}${backendUrl.length > 40 ? '…' : ''} — make sure this matches SERVER_URL in your sketch.`
+                    : 'No backend URL found. Go to Settings → Camera → enter your Railway URL (e.g. https://staysync-production.up.railway.app) → Save.',
                   link: '/settings', linkLabel: 'Settings →' },
                 { n: 4, color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe',
-                  title: 'Unplug USB — connect to powerbank',
-                  body: 'Camera now runs on WiFi independently. It sends a JPEG frame every 5 seconds to your backend. Frames appear here automatically.',
+                  title: 'Unplug USB — power from powerbank',
+                  body: 'After upload succeeds, unplug USB and power the ESP32-CAM from a powerbank. It connects to WiFi automatically and sends a JPEG frame every 5 seconds. Frames appear here within moments.',
                   link: null },
               ].map(s => (
                 <div key={s.n} className="rounded-xl p-3 flex items-start gap-3"
@@ -308,7 +308,7 @@ function CameraDetailContent() {
                   style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
                   <Icon name="info" size={14} color="#d97706" />
                   <p className="text-xs leading-snug" style={{ color: '#92400e' }}>
-                    <strong>Cloudflare tunnel URL changed?</strong> Re-connect your ESP32 via USB and flash the new URL. The camera stores the URL in its memory — it won't update automatically.
+                    <strong>No backend URL set.</strong> Go to Settings → enter your Railway URL (e.g. <code style={{ background: '#fde68a', borderRadius: 3, padding: '0 3px' }}>https://staysync-production.up.railway.app</code>) → Save. Then make sure that same URL is in your Arduino sketch.
                   </p>
                 </div>
               )}

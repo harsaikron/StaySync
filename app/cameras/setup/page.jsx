@@ -50,11 +50,15 @@ const ESP32_SKETCH = `// ╔═════════════════�
 
 #define WIFI_SSID      "YOUR_WIFI_NAME"       // <-- change this
 #define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"   // <-- change this
-#define SERVER_URL     "https://YOUR-BACKEND.trycloudflare.com"  // <-- change this
+#define SERVER_URL     "https://staysync-production.up.railway.app"  // <-- change this if needed
 #define CAMERA_ID      "esp32-cam-1"          // <-- give this camera a unique name
 
 // ════════════════════════════════════════════════════════
 // Board: AI Thinker ESP32-CAM
+// IMPORTANT: ESP32-CAM only connects to 2.4 GHz WiFi.
+//   If your router broadcasts 5 GHz with the same name,
+//   enable a separate 2.4 GHz SSID in your router admin.
+//   Or test with an iPhone hotspot (always 2.4 GHz).
 // Libraries needed: esp32 board package (Espressif)
 //   NO extra libraries required!
 // ════════════════════════════════════════════════════════
@@ -79,6 +83,28 @@ const ESP32_SKETCH = `// ╔═════════════════�
 #define VSYNC_GPIO_NUM 25
 #define HREF_GPIO_NUM  23
 #define PCLK_GPIO_NUM  22
+
+bool connectWiFi() {
+  Serial.println("Connecting to WiFi: " + String(WIFI_SSID));
+  WiFi.disconnect(true);   // clear any previous connection
+  delay(200);
+  WiFi.mode(WIFI_STA);     // station mode only
+  delay(100);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  for (int i = 0; i < 40; i++) {
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\\nConnected! IP: " + WiFi.localIP().toString());
+      return true;
+    }
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\\nERROR: WiFi failed");
+  Serial.println("  Check: 1) WIFI_SSID and WIFI_PASSWORD are correct");
+  Serial.println("         2) Your router is broadcasting 2.4 GHz");
+  Serial.println("         3) ESP32-CAM is within range of router");
+  return false;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -107,25 +133,16 @@ void setup() {
   }
   Serial.println("Camera OK");
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to WiFi");
-  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
-    delay(500); Serial.print(".");
-  }
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\\nConnected! IP: " + WiFi.localIP().toString());
+  if (connectWiFi()) {
     Serial.println("Sending frames every 5 seconds...");
-  } else {
-    Serial.println("\\nERROR: WiFi failed — check WIFI_SSID and WIFI_PASSWORD at top of sketch");
   }
 }
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi lost — reconnecting...");
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    delay(5000);
-    return;
+    connectWiFi();
+    if (WiFi.status() != WL_CONNECTED) { delay(5000); return; }
   }
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) { Serial.println("Camera capture failed"); delay(3000); return; }
