@@ -95,7 +95,8 @@ void setup() {
   cfg.pin_d6=Y8_GPIO_NUM; cfg.pin_d7=Y9_GPIO_NUM;
   cfg.pin_xclk=XCLK_GPIO_NUM; cfg.pin_pclk=PCLK_GPIO_NUM;
   cfg.pin_vsync=VSYNC_GPIO_NUM; cfg.pin_href=HREF_GPIO_NUM;
-  cfg.pin_sda=SIOD_GPIO_NUM; cfg.pin_scl=SIOC_GPIO_NUM;
+  cfg.pin_sscb_sda=SIOD_GPIO_NUM; cfg.pin_sscb_scl=SIOC_GPIO_NUM;
+  // Note: if you get "no member named pin_sscb_sda" use pin_sda / pin_scl instead (ESP32 lib v3+)
   cfg.pin_pwdn=PWDN_GPIO_NUM; cfg.pin_reset=RESET_GPIO_NUM;
   cfg.xclk_freq_hz=20000000; cfg.pixel_format=PIXFORMAT_JPEG;
   cfg.frame_size=FRAMESIZE_VGA; cfg.jpeg_quality=12; cfg.fb_count=1;
