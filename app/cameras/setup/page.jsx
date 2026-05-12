@@ -13,9 +13,6 @@ function saveLocalCamera(cam) {
   } catch {}
 }
 
-const BAUD_RATE = 115200;
-const ENCODER = new TextEncoder();
-
 // Detect the public backend URL at runtime
 function getDefaultServerUrl() {
   if (typeof window === 'undefined') return '';
@@ -50,7 +47,7 @@ const ESP32_SKETCH = `// ╔═════════════════�
 
 #define WIFI_SSID      "YOUR_WIFI_NAME"       // <-- change this
 #define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"   // <-- change this
-#define SERVER_URL     "https://staysync-production.up.railway.app"  // <-- change this if needed
+#define SERVER_URL     "http://YOUR_MAC_IP:3001"  // <-- e.g. http://192.168.1.42:3001
 #define CAMERA_ID      "esp32-cam-1"          // <-- give this camera a unique name
 
 // ════════════════════════════════════════════════════════
@@ -271,99 +268,65 @@ function LightField({ label, note, children }) {
   );
 }
 
+function CopyButton({ text, label = 'Copy' }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button onClick={copy}
+      className="text-xs px-3 py-1.5 rounded-lg font-bold shrink-0"
+      style={{ background: copied ? '#16a34a' : '#1d4ed8', color: '#fff' }}>
+      {copied ? '✓ Copied' : label}
+    </button>
+  );
+}
+
+function CodeLine({ children }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5"
+      style={{ background: '#0f172a', border: '1px solid #1e3a8a' }}>
+      <code className="text-xs font-mono flex-1 truncate" style={{ color: '#93c5fd' }}>{children}</code>
+      <CopyButton text={children} />
+    </div>
+  );
+}
+
+function Step({ n, color = '#2563eb', title, sub, children }) {
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
+      <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#f3f4f6' }}>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+          style={{ background: color }}>{n}</div>
+        <div>
+          <p className="font-semibold text-sm" style={{ color: '#111827' }}>{title}</p>
+          {sub && <p className="text-xs" style={{ color: '#9ca3af' }}>{sub}</p>}
+        </div>
+      </div>
+      <div className="p-4 space-y-3">{children}</div>
+    </div>
+  );
+}
+
 function ESP32Tab() {
   const router = useRouter();
-  const [port, setPort] = useState(null);
-  const [usbStatus, setUsbStatus] = useState('idle'); // idle | connecting | connected | error
-  const [flashStatus, setFlashStatus] = useState('idle'); // idle | flashing | done | error
-  const [path, setPath] = useState('new'); // 'new' | 'existing'
-  const [log, setLog] = useState([]);
-  const addLog = (msg) => setLog(prev => [...prev, msg]);
-
-  const [camId] = useState(`esp32-${Date.now()}`);
-  const [form, setForm] = useState({
-    name: '', location: '',
-    ssid: '', password: '',
-    serverUrl: typeof window !== 'undefined'
-      ? (localStorage.getItem('staysync-backend-url') || '') : '',
-  });
-  const [existingForm, setExistingForm] = useState({ name: '', location: '' });
+  const [camName, setCamName] = useState('Living Room');
+  const [camLocation, setCamLocation] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
-  const setEx = (key) => (val) => setExistingForm(f => ({ ...f, [key]: val }));
-
-  const serverUrlMissing = !form.serverUrl || form.serverUrl.includes('localhost');
-
-  const connectSerial = async () => {
-    setUsbStatus('connecting');
-    setLog([]);
-    addLog('Opening port picker — select your ESP32-CAM…');
-    try {
-      const p = await navigator.serial.requestPort();
-      setPort(p);
-      if (p.readable || p.writable) {
-        try { await p.close(); } catch {}
-        await new Promise(r => setTimeout(r, 800));
-      }
-      await p.open({ baudRate: BAUD_RATE });
-      setUsbStatus('connected');
-      addLog('USB connected ✓ — click "Flash to Camera" below');
-    } catch (err) {
-      setUsbStatus('error');
-      const isLocked = err.name === 'InvalidStateError' || err.name === 'NetworkError'
-        || (err.message || '').toLowerCase().includes('open');
-      if (isLocked) {
-        addLog('❌ Port locked — close Arduino IDE completely, unplug/replug, try again');
-      } else if (err.name === 'NotFoundError') {
-        addLog('No port selected — click Connect and choose your ESP32 from the list');
-      } else {
-        addLog(`❌ ${err.message || 'Could not open port'}`);
-      }
-    }
-  };
-
-  const flashCredentials = async () => {
-    if (!form.name || !form.ssid || !form.password || !form.serverUrl) {
-      alert('Please fill in all fields above before flashing');
-      return;
-    }
-    try {
-      setFlashStatus('flashing');
-      addLog('Sending WiFi + server config to ESP32-CAM…');
-      const writer = port.writable.getWriter();
-      const payload = JSON.stringify({
-        ssid: form.ssid,
-        password: form.password,
-        server_url: form.serverUrl.replace(/\/$/, ''),
-        camera_id: camId,
-      }) + '\n';
-      await writer.write(ENCODER.encode(payload));
-      writer.releaseLock();
-      addLog('Config sent ✓ — saving camera to portal…');
-
-      const camData = { id: camId, name: form.name, location: form.location || 'room', type: 'esp32', status: 'online' };
-      saveLocalCamera(camData);
-      addLog(`"${form.name}" saved ✓`);
-
-      await new Promise(r => setTimeout(r, 3000));
-      try { await post('/cameras/register', camData); addLog('Backend registered ✓'); }
-      catch { addLog('Saved locally — will sync when backend is online'); }
-
-      addLog('✅ Done! Unplug USB and connect to a powerbank — frames will appear automatically.');
-      setFlashStatus('done');
-      setTimeout(() => router.push('/cameras'), 3000);
-    } catch (err) {
-      setFlashStatus('error');
-      addLog(`❌ Error: ${err.message}`);
-    }
-  };
-
-  const registerExisting = async () => {
-    if (!existingForm.name) { alert('Enter a camera name'); return; }
+  const registerCamera = async () => {
+    if (!camName.trim()) { alert('Enter a camera name'); return; }
     setSaving(true);
-    const id = `esp32-${Date.now()}`;
-    const camData = { id, name: existingForm.name, location: existingForm.location || 'room', type: 'esp32', status: 'online' };
+    const camData = {
+      id: 'esp32-cam-1',
+      name: camName.trim(),
+      location: camLocation.trim() || 'room',
+      type: 'esp32',
+      status: 'online',
+    };
     saveLocalCamera(camData);
     try { await post('/cameras/register', camData); } catch {}
     router.push('/cameras');
@@ -373,172 +336,92 @@ function ESP32Tab() {
   return (
     <div className="space-y-4">
 
-      {/* Firmware step — collapsed by default */}
+      {/* Sketch section — open by default */}
       <ArduinoSketchSection />
 
-      {/* Path selector */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
-        <div className="flex">
-          {[
-            { id: 'new',      label: '🔧 First time setup',    sub: 'Flash WiFi via USB' },
-            { id: 'existing', label: '✅ Already configured',   sub: 'Just register the camera' },
-          ].map(p => (
-            <button key={p.id} onClick={() => setPath(p.id)}
-              className="flex-1 py-3 px-2 text-center transition-all"
-              style={{
-                background: path === p.id ? '#2563eb' : '#f9fafb',
-                color: path === p.id ? '#ffffff' : '#6b7280',
-                borderRight: p.id === 'new' ? '1px solid #e5e7eb' : 'none',
-              }}>
-              <div className="text-sm font-semibold">{p.label}</div>
-              <div className="text-xs opacity-80 mt-0.5">{p.sub}</div>
-            </button>
-          ))}
+      {/* Step 1 — Start backend on Mac */}
+      <Step n="1" title="Start the backend on your Mac" sub="Run this once in Terminal — leave it running">
+        <p className="text-sm" style={{ color: '#374151' }}>
+          Open <strong>Terminal</strong> on your Mac and run:
+        </p>
+        <CodeLine>cd ~/Downloads/staysync && node server.js</CodeLine>
+        <p className="text-xs" style={{ color: '#6b7280' }}>
+          You should see: <span className="font-mono bg-gray-100 px-1 rounded">StaySync backend on port 3001</span>
+        </p>
+      </Step>
+
+      {/* Step 2 — Find Mac IP */}
+      <Step n="2" title="Find your Mac's IP address" sub="The ESP32 will send frames to this address">
+        <p className="text-sm" style={{ color: '#374151' }}>
+          In Terminal, run:
+        </p>
+        <CodeLine>ipconfig getifaddr en0</CodeLine>
+        <p className="text-xs" style={{ color: '#6b7280' }}>
+          You'll get something like <span className="font-mono bg-gray-100 px-1 rounded">192.168.1.42</span> — copy that number.
+          Then in the Arduino sketch, set:
+        </p>
+        <div className="rounded-lg px-3 py-2.5 text-xs font-mono" style={{ background: '#fef3c7', border: '1px solid #fbbf24', color: '#92400e' }}>
+          #define SERVER_URL &nbsp;&nbsp;"http://192.168.1.42:3001"<br/>
+          <span style={{ opacity: 0.7 }}>// replace 192.168.1.42 with your actual IP</span>
         </div>
-      </div>
-
-      {/* ── PATH A: First time setup ── */}
-      {path === 'new' && (
-        <div className="space-y-4">
-
-          {/* Step 1: Camera details */}
-          <div className="rounded-2xl p-4 space-y-4" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: '#2563eb' }}>1</div>
-              <div>
-                <p className="font-semibold text-sm" style={{ color: '#111827' }}>Camera details</p>
-                <p className="text-xs" style={{ color: '#9ca3af' }}>Give this camera a name and enter your WiFi</p>
-              </div>
-            </div>
-
-            <LightField label="Camera name">
-              <LightInput value={form.name} onChange={set('name')} placeholder="e.g. Living Room" />
-            </LightField>
-
-            <LightField label="Room (optional)">
-              <LightInput value={form.location} onChange={set('location')} placeholder="e.g. living_room" />
-            </LightField>
-
-            <LightField label="WiFi name" note="Your home WiFi or phone hotspot name">
-              <LightInput value={form.ssid} onChange={set('ssid')} placeholder="e.g. MyHomeWiFi" />
-            </LightField>
-
-            <LightField label="WiFi password">
-              <LightInput value={form.password} onChange={set('password')} placeholder="••••••••" type="password" />
-            </LightField>
-
-            <LightField label="Backend URL" note="Public URL where the camera sends frames — not localhost">
-              <LightInput value={form.serverUrl} onChange={set('serverUrl')} placeholder="https://your-tunnel.trycloudflare.com" />
-              {serverUrlMissing && form.serverUrl !== '' && (
-                <div className="mt-2 rounded-xl px-3 py-2 text-xs flex items-center gap-2" style={{ background: '#fef3c7', color: '#92400e' }}>
-                  ⚠️ Must be a public URL (not localhost) so the ESP32 can reach it over WiFi
-                </div>
-              )}
-              {!form.serverUrl && (
-                <div className="mt-2 rounded-xl px-3 py-2 text-xs flex items-center gap-2" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                  💡 Go to Settings first to set your backend URL — it will be pre-filled here
-                </div>
-              )}
-            </LightField>
-          </div>
-
-          {/* Step 2: Connect USB */}
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: usbStatus === 'connected' ? '#16a34a' : '#2563eb' }}>2</div>
-              <div>
-                <p className="font-semibold text-sm" style={{ color: '#111827' }}>Connect ESP32 via USB</p>
-                <p className="text-xs" style={{ color: '#9ca3af' }}>Close Arduino IDE first, then plug in USB</p>
-              </div>
-            </div>
-
-            {!('serial' in navigator) ? (
-              <div className="rounded-xl p-3 text-sm" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
-                ⚠️ <strong>Chrome or Edge required</strong> — open this page on a desktop browser (not Safari/Firefox)
-              </div>
-            ) : usbStatus === 'connected' ? (
-              <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <span className="text-sm font-medium" style={{ color: '#15803d' }}>✅ USB connected</span>
-                <button onClick={() => { setUsbStatus('idle'); setLog([]); setPort(null); }}
-                  className="text-xs px-3 py-1 rounded-lg" style={{ background: '#e5e7eb', color: '#6b7280' }}>
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button onClick={connectSerial} disabled={usbStatus === 'connecting'}
-                className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ background: '#2563eb', color: '#ffffff' }}>
-                <Icon name="plug" size={16} color="#ffffff" />
-                {usbStatus === 'connecting' ? 'Opening port picker…' : 'Connect Camera via USB'}
-              </button>
-            )}
-          </div>
-
-          {/* Step 3: Flash */}
-          {usbStatus === 'connected' && (
-            <div className="rounded-2xl p-4 space-y-3" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: flashStatus === 'done' ? '#16a34a' : '#2563eb' }}>3</div>
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: '#111827' }}>Flash & register</p>
-                  <p className="text-xs" style={{ color: '#9ca3af' }}>Sends WiFi config to camera and saves it to the portal</p>
-                </div>
-              </div>
-
-              <button onClick={flashCredentials}
-                disabled={flashStatus === 'flashing' || flashStatus === 'done' || serverUrlMissing || !form.name || !form.ssid || !form.password}
-                className="w-full py-3.5 rounded-xl text-base font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
-                style={{ background: flashStatus === 'done' ? '#16a34a' : '#2563eb', color: '#ffffff' }}>
-                <Icon name="plug" size={18} color="#ffffff" />
-                {flashStatus === 'flashing' ? 'Flashing…' : flashStatus === 'done' ? '✅ Done! Redirecting…' : 'Flash to Camera'}
-              </button>
-            </div>
-          )}
-
-          {/* Log output */}
-          {log.length > 0 && (
-            <div className="rounded-xl p-4 space-y-1.5" style={{ background: '#0f172a', border: '1px solid #1e3a8a' }}>
-              {log.map((l, i) => {
-                const isErr = l.startsWith('❌') || l.startsWith('Error');
-                const isOk  = l.includes('✓') || l.startsWith('✅');
-                return (
-                  <div key={i} className="text-xs font-mono"
-                    style={{ color: isErr ? '#f87171' : isOk ? '#4ade80' : '#93c5fd' }}>
-                    {l}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        <div className="rounded-xl px-3 py-2 text-xs flex items-start gap-2" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
+          <span>💡</span>
+          <span>Your Mac and ESP32 must be on the <strong>same WiFi network</strong>. ESP32 only supports <strong>2.4 GHz</strong> — if unsure, test with iPhone hotspot first.</span>
         </div>
-      )}
+      </Step>
 
-      {/* ── PATH B: Already configured ── */}
-      {path === 'existing' && (
-        <div className="rounded-2xl p-4 space-y-4" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
-          <p className="text-sm" style={{ color: '#6b7280' }}>
-            Your ESP32 is already sending frames. Just give it a name so it appears in your portal.
-          </p>
-
-          <LightField label="Camera name">
-            <LightInput value={existingForm.name} onChange={setEx('name')} placeholder="e.g. Living Room" />
-          </LightField>
-
-          <LightField label="Room (optional)">
-            <LightInput value={existingForm.location} onChange={setEx('location')} placeholder="e.g. living_room" />
-          </LightField>
-
-          <div className="rounded-xl px-4 py-3 text-xs" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
-            💡 A unique Camera ID will be auto-generated. You don't need to type one.
-          </div>
-
-          <button onClick={registerExisting} disabled={saving || !existingForm.name}
-            className="w-full py-3.5 rounded-xl text-base font-semibold disabled:opacity-40"
-            style={{ background: '#2563eb', color: '#ffffff' }}>
-            {saving ? 'Registering…' : 'Register Camera'}
-          </button>
+      {/* Step 3 — Flash sketch */}
+      <Step n="3" title="Flash the sketch to ESP32-CAM" sub="Copy from the yellow box above → paste in Arduino IDE">
+        <div className="space-y-1.5 text-sm" style={{ color: '#374151' }}>
+          <p>① Copy the sketch from the <strong>yellow box above</strong></p>
+          <p>② Open Arduino IDE → press <strong>⌘+A</strong> → Delete → paste</p>
+          <p>③ Fill in <strong>WIFI_SSID</strong>, <strong>WIFI_PASSWORD</strong>, and <strong>SERVER_URL</strong> (your Mac IP)</p>
+          <p>④ Tools → Board → <strong>AI Thinker ESP32-CAM</strong></p>
+          <p>⑤ Tools → Port → pick your ESP32 port</p>
+          <p>⑥ Hold <strong>IO0 button</strong> → click Upload → release when "Connecting…"</p>
+          <p>⑦ Press <strong>EN button</strong> to reboot after upload</p>
         </div>
-      )}
+      </Step>
+
+      {/* Step 4 — Verify in Serial Monitor */}
+      <Step n="4" color="#059669" title="Verify in Serial Monitor" sub="Tools → Serial Monitor → 115200 baud">
+        <div className="rounded-xl p-3 space-y-1 text-xs font-mono" style={{ background: '#0f172a' }}>
+          <p style={{ color: '#4ade80' }}>=== StaySync ESP32-CAM ===</p>
+          <p style={{ color: '#93c5fd' }}>Camera OK</p>
+          <p style={{ color: '#93c5fd' }}>Connecting to WiFi: StarHub_4594</p>
+          <p style={{ color: '#93c5fd' }}>........</p>
+          <p style={{ color: '#4ade80' }}>Connected! IP: 192.168.1.55</p>
+          <p style={{ color: '#4ade80' }}>Sending frames every 5 seconds...</p>
+          <p style={{ color: '#4ade80' }}>Frame sent OK (12345 bytes)</p>
+        </div>
+        <p className="text-xs" style={{ color: '#6b7280' }}>
+          If you see "Frame sent OK" — the ESP32 is working. Frames will appear in the portal automatically.
+        </p>
+        <div className="rounded-xl px-3 py-2 text-xs flex items-start gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
+          <span>⚠️</span>
+          <span>If you see "WiFi failed" — check that <strong>WIFI_SSID and WIFI_PASSWORD</strong> are correct, and that your router broadcasts <strong>2.4 GHz</strong>.</span>
+        </div>
+      </Step>
+
+      {/* Step 5 — Register in portal */}
+      <Step n="5" color="#7c3aed" title="Register camera in portal" sub="Give it a name so it shows up in your camera list">
+        <LightField label="Camera name">
+          <LightInput value={camName} onChange={setCamName} placeholder="e.g. Living Room" />
+        </LightField>
+        <LightField label="Room / location (optional)">
+          <LightInput value={camLocation} onChange={setCamLocation} placeholder="e.g. living_room" />
+        </LightField>
+        <button onClick={registerCamera} disabled={saving || !camName.trim()}
+          className="w-full py-3.5 rounded-xl text-base font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+          style={{ background: '#7c3aed', color: '#ffffff' }}>
+          <Icon name="check" size={18} color="#ffffff" />
+          {saving ? 'Registering…' : 'Register Camera → Go to Dashboard'}
+        </button>
+        <p className="text-xs text-center" style={{ color: '#9ca3af' }}>
+          Camera ID: <code className="font-mono">esp32-cam-1</code> · frames appear automatically once the sketch is running
+        </p>
+      </Step>
+
     </div>
   );
 }
