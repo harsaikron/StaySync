@@ -100,6 +100,8 @@ function CameraDetailContent() {
   const [selected,  setSelected] = useState(0);
   const [paused,    setPaused]   = useState(false);
   const [backendUrl, setBackendUrl] = useState('');
+  const [fetchStatus, setFetchStatus] = useState('idle'); // idle | ok | error
+  const [lastFetchMs, setLastFetchMs] = useState(null);
 
   const loadData = () => {
     try {
@@ -110,8 +112,9 @@ function CameraDetailContent() {
       const h = JSON.parse(localStorage.getItem(`staysync-cam-frames-${id}`) || '[]');
       setFrames(h);
 
+      // Only fall back to localStorage frame if we haven't got a live one via polling
       const lf = localStorage.getItem(`staysync-cam-frame-${id}`);
-      if (lf) { setLiveFrame(lf); setLiveTs(Date.now()); }
+      if (lf && !liveFrame) { setLiveFrame(lf); setLiveTs(Date.now()); }
 
       setPaused(localStorage.getItem(`staysync-cam-paused-${id}`) === 'true');
 
@@ -122,6 +125,50 @@ function CameraDetailContent() {
 
   useEffect(() => { loadData(); }, [id]);
   useEffect(() => { const t = setInterval(loadData, 3000); return () => clearInterval(t); }, [id]);
+
+  // ── Poll backend for ESP32 frames ──────────────────────────
+  useEffect(() => {
+    const camType = camera?.type;
+    if (camType !== 'esp32') return;
+    const base = (backendUrl || localStorage.getItem('staysync-backend-url') || '').trim().replace(/\/$/, '');
+    if (!base) return;
+
+    let cancelled = false;
+
+    const fetchFrame = async () => {
+      if (paused || cancelled) return;
+      try {
+        const resp = await fetch(`${base}/stream-snapshot/${id}`, { cache: 'no-store' });
+        if (!resp.ok) { setFetchStatus('error'); return; }
+        const blob = await resp.blob();
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (cancelled) return;
+          const dataUrl = reader.result;
+          setLiveFrame(dataUrl);
+          setLiveTs(Date.now());
+          setLastFetchMs(Date.now());
+          setFetchStatus('ok');
+          try {
+            localStorage.setItem(`staysync-cam-frame-${id}`, dataUrl);
+            // Keep a rolling history of up to 10 frames
+            const key = `staysync-cam-frames-${id}`;
+            const hist = JSON.parse(localStorage.getItem(key) || '[]');
+            hist.unshift({ ts: Date.now(), frame: dataUrl, guidance: localStorage.getItem(`staysync-cam-guidance-${id}`) || '' });
+            if (hist.length > 10) hist.length = 10;
+            localStorage.setItem(key, JSON.stringify(hist));
+          } catch {}
+        };
+        reader.readAsDataURL(blob);
+      } catch {
+        if (!cancelled) setFetchStatus('error');
+      }
+    };
+
+    fetchFrame();
+    const t = setInterval(fetchFrame, 5000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [id, camera?.type, backendUrl, paused]);
 
   const togglePause = () => {
     const next = !paused;
@@ -141,11 +188,25 @@ function CameraDetailContent() {
   const displayFrame = sel?.frame || liveFrame;
   const displayGuidance = sel?.guidance || (typeof window !== 'undefined' ? localStorage.getItem(`staysync-cam-guidance-${id}`) : '') || '';
   const TYPE_LABEL = { browser: 'Browser / Webcam', esp32: 'ESP32-CAM', phone: 'Phone Camera' };
-  const backendOk = backendUrl && !backendUrl.includes('localhost') && !backendUrl.includes('127.0.0.1');
+  const backendOk = !!backendUrl; // allow localhost for local demo
   const isLive = !paused && !!liveFrame;
+  const secondsAgo = lastFetchMs ? Math.floor((Date.now() - lastFetchMs) / 1000) : null;
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#f5f5f5' }}>
+
+      {/* ── No backend URL banner ── */}
+      {camera.type === 'esp32' && !backendUrl && (
+        <div className="px-4 py-3 flex items-center gap-2"
+          style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca' }}>
+          <Icon name="warning" size={15} color="#dc2626" />
+          <p className="text-xs flex-1" style={{ color: '#dc2626' }}>
+            <strong>No backend URL set.</strong> Go to Settings → Camera → enter <code className="font-mono">http://localhost:3001</code> → Save.
+          </p>
+          <a href="/settings" className="text-xs font-bold px-2.5 py-1 rounded-lg"
+            style={{ background: '#dc2626', color: '#fff' }}>Settings</a>
+        </div>
+      )}
 
       {/* ── Sticky header ── */}
       <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b"
@@ -192,13 +253,24 @@ function CameraDetailContent() {
           <div className="flex items-center justify-between px-4 py-2.5 border-b"
             style={{ background: '#f8f8f8', borderColor: '#e8e8e8' }}>
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500' : 'bg-gray-400'}`}
+              <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500' : fetchStatus === 'error' ? 'bg-red-400' : 'bg-gray-400'}`}
                 style={isLive ? { animation: 'pulse 1.5s infinite' } : {}} />
               <span className="text-xs font-bold" style={{ color: '#333' }}>
-                {isLive ? 'LIVE' : paused ? 'PAUSED' : 'WAITING FOR CAMERA'}
+                {isLive ? 'LIVE' : paused ? 'PAUSED' : fetchStatus === 'error' ? 'BACKEND UNREACHABLE' : 'WAITING FOR CAMERA'}
               </span>
+              {fetchStatus === 'error' && camera?.type === 'esp32' && (
+                <a href="/settings"
+                  className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                  Fix URL →
+                </a>
+              )}
             </div>
-            {liveTs && <span className="text-xs" style={{ color: '#888' }}>{formatAgo(liveTs)}</span>}
+            {liveTs && (
+              <span className="text-xs" style={{ color: '#888' }}>
+                {secondsAgo !== null && secondsAgo < 10 ? 'just now' : formatAgo(liveTs)}
+              </span>
+            )}
           </div>
 
           {/* Frame area — GREY background */}
