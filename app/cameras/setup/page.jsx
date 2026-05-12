@@ -5,42 +5,47 @@ import { useRouter } from 'next/navigation';
 import BrowserCamera from '@/components/BrowserCamera';
 import Icon from '@/components/Icon';
 
+/* ── helpers ─────────────────────────────────────────────── */
 function saveLocalCamera(cam) {
   try {
     const existing = JSON.parse(localStorage.getItem('staysync-local-cameras') || '[]');
-    const updated = [...existing.filter(c => c.id !== cam.id), cam];
-    localStorage.setItem('staysync-local-cameras', JSON.stringify(updated));
+    localStorage.setItem('staysync-local-cameras', JSON.stringify([...existing.filter(c => c.id !== cam.id), cam]));
   } catch {}
 }
 
-// Detect the public backend URL at runtime
-function getDefaultServerUrl() {
-  if (typeof window === 'undefined') return '';
-  const env = process.env.NEXT_PUBLIC_API_URL;
-  if (env && !env.includes('localhost')) return env;
-  // Running on Vercel / public domain — user must supply backend URL
-  return '';
+function CopyBtn({ text, label = 'Copy' }) {
+  const [ok, setOk] = useState(false);
+  const go = () => navigator.clipboard.writeText(text).then(() => { setOk(true); setTimeout(() => setOk(false), 2000); });
+  return (
+    <button onClick={go}
+      className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+      style={{ background: ok ? '#16a34a' : '#2563eb', color: '#fff' }}>
+      {ok ? '✓ Copied' : label}
+    </button>
+  );
 }
 
-function Field({ label, note, children }) {
+function Terminal({ children }) {
   return (
-    <div>
-      <label className="text-sm block mb-1.5" style={{ color: 'var(--text-muted,#888)' }}>{label}</label>
-      {children}
-      {note && <p className="text-xs mt-1" style={{ color: 'var(--text-muted,#666)' }}>{note}</p>}
+    <div className="flex items-center gap-3 rounded-xl px-4 py-3"
+      style={{ background: '#0f172a', border: '1px solid #334155' }}>
+      <span className="text-green-400 text-xs font-bold shrink-0">$</span>
+      <code className="text-xs font-mono flex-1 truncate" style={{ color: '#93c5fd' }}>{children}</code>
+      <CopyBtn text={children} />
     </div>
   );
 }
 
-function InputBox({ value, onChange, placeholder, type = 'text' }) {
+function LightInput({ value, onChange, placeholder, type = 'text' }) {
   return (
     <input type={type} value={value} placeholder={placeholder}
       onChange={e => onChange(e.target.value)}
-      className="w-full rounded-xl px-4 py-3 text-base outline-none"
-      style={{ background: 'var(--surface-deep,#0a0a0a)', border: '1px solid var(--border,#333)', color: 'var(--text,#fff)' }} />
+      className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+      style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#111827' }} />
   );
 }
 
+/* ── Arduino sketch ──────────────────────────────────────── */
 const ESP32_SKETCH = `// ╔══════════════════════════════════════════════════════╗
 // ║         StaySync ESP32-CAM — FILL IN BELOW          ║
 // ╚══════════════════════════════════════════════════════╝
@@ -83,9 +88,9 @@ const ESP32_SKETCH = `// ╔═════════════════�
 
 bool connectWiFi() {
   Serial.println("Connecting to WiFi: " + String(WIFI_SSID));
-  WiFi.disconnect(true);   // clear any previous connection
+  WiFi.disconnect(true);
   delay(200);
-  WiFi.mode(WIFI_STA);     // station mode only
+  WiFi.mode(WIFI_STA);
   delay(100);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   for (int i = 0; i < 40; i++) {
@@ -119,20 +124,16 @@ void setup() {
   cfg.pin_xclk=XCLK_GPIO_NUM; cfg.pin_pclk=PCLK_GPIO_NUM;
   cfg.pin_vsync=VSYNC_GPIO_NUM; cfg.pin_href=HREF_GPIO_NUM;
   cfg.pin_sscb_sda=SIOD_GPIO_NUM; cfg.pin_sscb_scl=SIOC_GPIO_NUM;
-  // Note: if you get "no member named pin_sscb_sda" use pin_sda / pin_scl instead (ESP32 lib v3+)
   cfg.pin_pwdn=PWDN_GPIO_NUM; cfg.pin_reset=RESET_GPIO_NUM;
   cfg.xclk_freq_hz=20000000; cfg.pixel_format=PIXFORMAT_JPEG;
   cfg.frame_size=FRAMESIZE_VGA; cfg.jpeg_quality=12; cfg.fb_count=1;
 
   if (esp_camera_init(&cfg) != ESP_OK) {
-    Serial.println("ERROR: Camera init failed — check board selection (AI Thinker ESP32-CAM)");
+    Serial.println("ERROR: Camera init failed — check board (AI Thinker ESP32-CAM)");
     return;
   }
   Serial.println("Camera OK");
-
-  if (connectWiFi()) {
-    Serial.println("Sending frames every 5 seconds...");
-  }
+  if (connectWiFi()) Serial.println("Sending frames every 5 seconds...");
 }
 
 void loop() {
@@ -151,95 +152,84 @@ void loop() {
   if (code == 200) {
     Serial.printf("Frame sent OK (%d bytes)\\n", fb->len);
   } else {
-    Serial.printf("Upload failed HTTP %d — check SERVER_URL at top of sketch\\n", code);
+    Serial.printf("Upload failed HTTP %d — check SERVER_URL\\n", code);
   }
   http.end();
   esp_camera_fb_return(fb);
   delay(5000);
 }`;
 
-function ArduinoSketchSection() {
-  const [open, setOpen] = useState(true); // open by default so users see it
+/* ── Sketch card ─────────────────────────────────────────── */
+function SketchCard() {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Read backend URL from localStorage for hint
-  const backendUrl = typeof window !== 'undefined'
-    ? (localStorage.getItem('staysync-backend-url') || '') : '';
-
-  const copy = () => {
-    navigator.clipboard.writeText(ESP32_SKETCH).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  const copy = () => navigator.clipboard.writeText(ESP32_SKETCH).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #fbbf24' }}>
-      {/* Header */}
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #fbbf24', boxShadow: '0 2px 8px rgba(251,191,36,0.12)' }}>
+      {/* trigger */}
       <button onClick={() => setOpen(v => !v)}
-        className="w-full px-4 py-3.5 flex items-center justify-between"
-        style={{ background: '#fffbeb' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-lg">📋</span>
-          <div className="text-left">
-            <p className="text-sm font-bold" style={{ color: '#92400e' }}>Step 1 — Flash this sketch to your ESP32-CAM</p>
-            <p className="text-xs" style={{ color: '#b45309' }}>Fill in your WiFi & URL at the top, then upload via Arduino IDE</p>
-          </div>
+        className="w-full flex items-center gap-3 px-4 py-4"
+        style={{ background: 'linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: '#f59e0b', boxShadow: '0 2px 6px rgba(245,158,11,0.35)' }}>
+          <span className="text-white text-base">📋</span>
         </div>
-        <span style={{ color: '#b45309' }}>{open ? '▲' : '▼'}</span>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-bold" style={{ color: '#78350f' }}>Arduino Sketch — copy & paste into IDE</p>
+          <p className="text-xs mt-0.5" style={{ color: '#b45309' }}>Fill in 3 values at the top, then upload</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={e => { e.stopPropagation(); copy(); }}
+            className="text-xs font-bold px-3 py-1.5 rounded-lg"
+            style={{ background: copied ? '#16a34a' : '#d97706', color: '#fff' }}>
+            {copied ? '✓ Copied!' : 'Copy'}
+          </button>
+          <span style={{ color: '#b45309', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
+        </div>
       </button>
 
+      {/* what to fill */}
       {open && (
-        <div style={{ background: '#ffffff' }}>
-          {/* What to fill in — highlighted box */}
-          <div className="mx-4 mt-4 rounded-xl p-4 space-y-3" style={{ background: '#fef3c7', border: '2px solid #fbbf24' }}>
-            <p className="text-sm font-bold" style={{ color: '#92400e' }}>✏️ Fill in these 3 values in the sketch before uploading:</p>
-            <div className="space-y-2 text-sm font-mono">
-              <div className="flex items-start gap-2">
-                <span style={{ color: '#dc2626', fontWeight: 700 }}>1.</span>
-                <span style={{ color: '#374151' }}><strong>WIFI_SSID</strong> — your WiFi name (e.g. "StarHub_4594")</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span style={{ color: '#dc2626', fontWeight: 700 }}>2.</span>
-                <span style={{ color: '#374151' }}><strong>WIFI_PASSWORD</strong> — your WiFi password</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span style={{ color: '#dc2626', fontWeight: 700 }}>3.</span>
-                <div style={{ color: '#374151' }}>
-                  <strong>SERVER_URL</strong> — your public backend URL
-                  {backendUrl && !backendUrl.includes('localhost') && (
-                    <div className="mt-1 text-xs px-2 py-1 rounded-lg" style={{ background: '#d1fae5', color: '#065f46' }}>
-                      ✓ Your current URL: {backendUrl}
-                    </div>
-                  )}
+        <div style={{ background: '#fff' }}>
+          <div className="mx-4 mt-4 rounded-xl p-4 space-y-2.5"
+            style={{ background: '#fef9ec', border: '1.5px dashed #fbbf24' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#92400e' }}>✏️ Change only these 3 lines before uploading</p>
+            {[
+              { n: 1, key: 'WIFI_SSID',     eg: '"StarHub_4594"',           note: 'Your WiFi network name' },
+              { n: 2, key: 'WIFI_PASSWORD', eg: '"your-password"',           note: 'Your WiFi password' },
+              { n: 3, key: 'SERVER_URL',    eg: '"http://192.168.1.42:3001"', note: 'Your Mac\'s local IP (see Step 2 below)' },
+            ].map(r => (
+              <div key={r.n} className="flex items-start gap-3 rounded-lg p-2.5"
+                style={{ background: '#fff', border: '1px solid #fde68a' }}>
+                <span className="w-5 h-5 rounded-full text-xs font-bold text-white flex items-center justify-center shrink-0"
+                  style={{ background: '#f59e0b' }}>{r.n}</span>
+                <div className="min-w-0">
+                  <code className="text-xs font-bold" style={{ color: '#dc2626' }}>{r.key}</code>
+                  <code className="text-xs ml-2" style={{ color: '#374151' }}>= {r.eg}</code>
+                  <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>{r.note}</p>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
 
-          {/* Steps */}
-          <div className="px-4 py-3 space-y-1.5 text-sm" style={{ color: '#374151' }}>
-            <p className="font-semibold text-xs uppercase tracking-wide mb-2" style={{ color: '#9ca3af' }}>Arduino IDE Steps</p>
-            <p>① Open Arduino IDE → paste the sketch below</p>
-            <p>② Fill in WiFi name, password, and backend URL at the <strong>top of the sketch</strong></p>
-            <p>③ Tools → Board → <strong>AI Thinker ESP32-CAM</strong></p>
-            <p>④ Tools → Port → pick your ESP32 port</p>
-            <p>⑤ Hold <strong>IO0 button</strong> → click Upload → release IO0 when "Connecting..."</p>
-            <p>⑥ Press <strong>EN button</strong> to reboot after upload</p>
-            <p>⑦ Open Serial Monitor (115200 baud) to see connection status</p>
-          </div>
-
-          {/* Sketch code */}
-          <div className="relative mx-4 mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
-            <div className="flex items-center justify-between px-4 py-2" style={{ background: '#1e293b' }}>
-              <span className="text-xs font-mono" style={{ color: '#94a3b8' }}>staysync_esp32cam.ino</span>
+          {/* code block */}
+          <div className="mx-4 mb-4 mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid #334155' }}>
+            <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#1e293b' }}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                <span className="text-xs font-mono ml-2" style={{ color: '#64748b' }}>staysync_esp32cam.ino</span>
+              </div>
               <button onClick={copy}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold"
-                style={{ background: copied ? '#16a34a' : '#2563eb', color: '#ffffff' }}>
-                {copied ? '✓ Copied!' : '📋 Copy Sketch'}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                style={{ background: copied ? '#16a34a' : '#2563eb', color: '#fff' }}>
+                {copied ? '✓ Copied!' : '📋 Copy All'}
               </button>
             </div>
-            <pre className="p-4 text-xs overflow-x-auto" style={{ color: '#e2e8f0', maxHeight: 300, fontFamily: 'monospace', background: '#0f172a' }}>
+            <pre className="p-4 text-xs overflow-x-auto overflow-y-auto leading-relaxed"
+              style={{ color: '#e2e8f0', maxHeight: 280, fontFamily: 'monospace', background: '#0f172a' }}>
               {ESP32_SKETCH}
             </pre>
           </div>
@@ -249,84 +239,61 @@ function ArduinoSketchSection() {
   );
 }
 
-function LightInput({ value, onChange, placeholder, type = 'text' }) {
+/* ── Step card ───────────────────────────────────────────── */
+function StepCard({ n, total, icon, color, bg, title, subtitle, done, children }) {
+  const isLast = n === total;
   return (
-    <input type={type} value={value} placeholder={placeholder}
-      onChange={e => onChange(e.target.value)}
-      className="w-full rounded-xl px-4 py-3 text-base outline-none"
-      style={{ background: '#f5f5f5', border: '1px solid #d1d5db', color: '#111827' }} />
-  );
-}
+    <div className="flex gap-3">
+      {/* timeline */}
+      <div className="flex flex-col items-center shrink-0" style={{ width: 32 }}>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+          style={{ background: done ? '#16a34a' : color, boxShadow: `0 2px 8px ${color}44` }}>
+          {done ? '✓' : n}
+        </div>
+        {!isLast && <div className="w-0.5 flex-1 mt-1" style={{ background: '#e2e8f0', minHeight: 20 }} />}
+      </div>
 
-function LightField({ label, note, children }) {
-  return (
-    <div>
-      <label className="text-sm font-medium block mb-1.5" style={{ color: '#374151' }}>{label}</label>
-      {children}
-      {note && <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>{note}</p>}
-    </div>
-  );
-}
-
-function CopyButton({ text, label = 'Copy' }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-  return (
-    <button onClick={copy}
-      className="text-xs px-3 py-1.5 rounded-lg font-bold shrink-0"
-      style={{ background: copied ? '#16a34a' : '#1d4ed8', color: '#fff' }}>
-      {copied ? '✓ Copied' : label}
-    </button>
-  );
-}
-
-function CodeLine({ children }) {
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5"
-      style={{ background: '#0f172a', border: '1px solid #1e3a8a' }}>
-      <code className="text-xs font-mono flex-1 truncate" style={{ color: '#93c5fd' }}>{children}</code>
-      <CopyButton text={children} />
-    </div>
-  );
-}
-
-function Step({ n, color = '#2563eb', title, sub, children }) {
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}>
-      <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#f3f4f6' }}>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-          style={{ background: color }}>{n}</div>
-        <div>
-          <p className="font-semibold text-sm" style={{ color: '#111827' }}>{title}</p>
-          {sub && <p className="text-xs" style={{ color: '#9ca3af' }}>{sub}</p>}
+      {/* card */}
+      <div className="flex-1 pb-4">
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: '#fff', border: `1.5px solid ${done ? '#bbf7d0' : '#e2e8f0'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          {/* header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b"
+            style={{ background: bg, borderColor: '#f1f5f9' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: color, boxShadow: `0 2px 6px ${color}44` }}>
+              <Icon name={icon} size={15} color="#fff" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{title}</p>
+              {subtitle && <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>{subtitle}</p>}
+            </div>
+            {done && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ background: '#dcfce7', color: '#16a34a' }}>Done ✓</span>
+            )}
+          </div>
+          <div className="p-4 space-y-3">{children}</div>
         </div>
       </div>
-      <div className="p-4 space-y-3">{children}</div>
     </div>
   );
 }
 
+/* ── ESP32 tab ───────────────────────────────────────────── */
 function ESP32Tab() {
   const router = useRouter();
   const [camName, setCamName] = useState('Living Room');
   const [camLocation, setCamLocation] = useState('');
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(0); // track progress 0..5
+
+  const advance = (n) => setStep(s => Math.max(s, n));
 
   const registerCamera = async () => {
     if (!camName.trim()) { alert('Enter a camera name'); return; }
     setSaving(true);
-    const camData = {
-      id: 'esp32-cam-1',
-      name: camName.trim(),
-      location: camLocation.trim() || 'room',
-      type: 'esp32',
-      status: 'online',
-    };
+    const camData = { id: 'esp32-cam-1', name: camName.trim(), location: camLocation.trim() || 'room', type: 'esp32', status: 'online' };
     saveLocalCamera(camData);
     try { await post('/cameras/register', camData); } catch {}
     router.push('/cameras');
@@ -334,141 +301,149 @@ function ESP32Tab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
 
-      {/* Sketch section — open by default */}
-      <ArduinoSketchSection />
+      {/* Sketch card — full width, outside timeline */}
+      <div className="mb-5">
+        <SketchCard />
+      </div>
 
-      {/* Step 1 — Start backend on Mac */}
-      <Step n="1" title="Start the backend on your Mac" sub="Run this once in Terminal — leave it running">
+      <p className="text-xs font-bold uppercase tracking-widest mb-4 px-1" style={{ color: '#94a3b8' }}>
+        Setup Steps
+      </p>
+
+      {/* Step 1 */}
+      <StepCard n={1} total={5} icon="monitor" color="#2563eb" bg="#f0f7ff" title="Start the backend on your Mac" subtitle="Run once in Terminal — keep it running" done={step >= 1}>
         <p className="text-sm" style={{ color: '#374151' }}>
           Open <strong>Terminal</strong> on your Mac and run:
         </p>
-        <CodeLine>cd ~/Downloads/staysync && node server.js</CodeLine>
-        <p className="text-xs" style={{ color: '#6b7280' }}>
-          You should see: <span className="font-mono bg-gray-100 px-1 rounded">StaySync backend on port 3001</span>
-        </p>
-      </Step>
-
-      {/* Step 2 — Find Mac IP */}
-      <Step n="2" title="Find your Mac's IP address" sub="The ESP32 will send frames to this address">
-        <p className="text-sm" style={{ color: '#374151' }}>
-          In Terminal, run:
-        </p>
-        <CodeLine>ipconfig getifaddr en0</CodeLine>
-        <p className="text-xs" style={{ color: '#6b7280' }}>
-          You'll get something like <span className="font-mono bg-gray-100 px-1 rounded">192.168.1.42</span> — copy that number.
-          Then in the Arduino sketch, set:
-        </p>
-        <div className="rounded-lg px-3 py-2.5 text-xs font-mono" style={{ background: '#fef3c7', border: '1px solid #fbbf24', color: '#92400e' }}>
-          #define SERVER_URL &nbsp;&nbsp;"http://192.168.1.42:3001"<br/>
-          <span style={{ opacity: 0.7 }}>// replace 192.168.1.42 with your actual IP</span>
-        </div>
-        <div className="rounded-xl px-3 py-2 text-xs flex items-start gap-2" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
-          <span>💡</span>
-          <span>Your Mac and ESP32 must be on the <strong>same WiFi network</strong>. ESP32 only supports <strong>2.4 GHz</strong> — if unsure, test with iPhone hotspot first.</span>
-        </div>
-      </Step>
-
-      {/* Step 3 — Flash sketch */}
-      <Step n="3" title="Flash the sketch to ESP32-CAM" sub="Copy from the yellow box above → paste in Arduino IDE">
-        <div className="space-y-1.5 text-sm" style={{ color: '#374151' }}>
-          <p>① Copy the sketch from the <strong>yellow box above</strong></p>
-          <p>② Open Arduino IDE → press <strong>⌘+A</strong> → Delete → paste</p>
-          <p>③ Fill in <strong>WIFI_SSID</strong>, <strong>WIFI_PASSWORD</strong>, and <strong>SERVER_URL</strong> (your Mac IP)</p>
-          <p>④ Tools → Board → <strong>AI Thinker ESP32-CAM</strong></p>
-          <p>⑤ Tools → Port → pick your ESP32 port</p>
-          <p>⑥ Hold <strong>IO0 button</strong> → click Upload → release when "Connecting…"</p>
-          <p>⑦ Press <strong>EN button</strong> to reboot after upload</p>
-        </div>
-      </Step>
-
-      {/* Step 4 — Verify in Serial Monitor */}
-      <Step n="4" color="#059669" title="Verify in Serial Monitor" sub="Tools → Serial Monitor → 115200 baud">
-        <div className="rounded-xl p-3 space-y-1 text-xs font-mono" style={{ background: '#0f172a' }}>
-          <p style={{ color: '#4ade80' }}>=== StaySync ESP32-CAM ===</p>
-          <p style={{ color: '#93c5fd' }}>Camera OK</p>
-          <p style={{ color: '#93c5fd' }}>Connecting to WiFi: StarHub_4594</p>
-          <p style={{ color: '#93c5fd' }}>........</p>
-          <p style={{ color: '#4ade80' }}>Connected! IP: 192.168.1.55</p>
-          <p style={{ color: '#4ade80' }}>Sending frames every 5 seconds...</p>
-          <p style={{ color: '#4ade80' }}>Frame sent OK (12345 bytes)</p>
-        </div>
-        <p className="text-xs" style={{ color: '#6b7280' }}>
-          If you see "Frame sent OK" — the ESP32 is working. Frames will appear in the portal automatically.
-        </p>
-        <div className="rounded-xl px-3 py-2 text-xs flex items-start gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
-          <span>⚠️</span>
-          <span>If you see "WiFi failed" — check that <strong>WIFI_SSID and WIFI_PASSWORD</strong> are correct, and that your router broadcasts <strong>2.4 GHz</strong>.</span>
-        </div>
-      </Step>
-
-      {/* Step 5 — Register in portal */}
-      <Step n="5" color="#7c3aed" title="Register camera in portal" sub="Give it a name so it shows up in your camera list">
-        <LightField label="Camera name">
-          <LightInput value={camName} onChange={setCamName} placeholder="e.g. Living Room" />
-        </LightField>
-        <LightField label="Room / location (optional)">
-          <LightInput value={camLocation} onChange={setCamLocation} placeholder="e.g. living_room" />
-        </LightField>
-        <button onClick={registerCamera} disabled={saving || !camName.trim()}
-          className="w-full py-3.5 rounded-xl text-base font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
-          style={{ background: '#7c3aed', color: '#ffffff' }}>
-          <Icon name="check" size={18} color="#ffffff" />
-          {saving ? 'Registering…' : 'Register Camera → Go to Dashboard'}
-        </button>
-        <p className="text-xs text-center" style={{ color: '#9ca3af' }}>
-          Camera ID: <code className="font-mono">esp32-cam-1</code> · frames appear automatically once the sketch is running
-        </p>
-      </Step>
-
-    </div>
-  );
-}
-
-function DesktopCameraGuide() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <button onClick={() => setOpen(v => !v)}
-        className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-        style={{ border: '1px solid var(--border,#333)', color: 'var(--text-muted,#888)' }}>
-        <Icon name="info" size={15} color="var(--text-muted,#888)" />
-        {open ? 'Hide guide' : 'How to connect from another device on the same WiFi'}
-      </button>
-      {open && (
-        <div className="mt-3 rounded-xl p-4 space-y-3"
-          style={{ background: 'var(--surface,#111)', border: '1px solid var(--border,#222)' }}>
-          <p className="text-sm font-semibold" style={{ color: '#93c5fd' }}>Find your Mac/PC local IP address</p>
-          <div className="space-y-2 text-sm" style={{ color: 'var(--text-muted,#aaa)' }}>
-            <div className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold shrink-0">Mac:</span>
-              <span>System Settings → Wi-Fi → click your network → IP Address (e.g. <span className="font-mono text-white">192.168.1.42</span>)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold shrink-0">Mac:</span>
-              <span>Or open Terminal and run <span className="font-mono text-white">ipconfig getifaddr en0</span></span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold shrink-0">Windows:</span>
-              <span>Open Command Prompt, run <span className="font-mono text-white">ipconfig</span> → look for IPv4 Address</span>
-            </div>
-          </div>
-          <div className="rounded-lg px-3 py-2.5 text-sm"
-            style={{ background: '#0f172a', border: '1px solid #1e3a8a', color: '#93c5fd' }}>
-            Then go to <strong>Settings → Backend URL</strong> and enter:<br />
-            <span className="font-mono">http://192.168.1.x:3001</span><br />
-            (replace x with your actual IP). Both devices must be on the same WiFi.
-          </div>
-          <p className="text-xs" style={{ color: 'var(--text-muted,#666)' }}>
-            For remote access outside home WiFi, deploy the backend to Railway, Render, or similar and use the public URL instead.
+        <Terminal>cd ~/Downloads/staysync && node server.js</Terminal>
+        <div className="rounded-xl p-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <p className="text-xs font-mono" style={{ color: '#166534' }}>
+            ✓ Expected output: <strong>StaySync backend on port 3001</strong>
           </p>
         </div>
-      )}
+        <button onClick={() => advance(1)}
+          className="text-sm font-semibold px-4 py-2 rounded-xl"
+          style={{ background: step >= 1 ? '#dcfce7' : '#eff6ff', color: step >= 1 ? '#16a34a' : '#2563eb', border: `1px solid ${step >= 1 ? '#bbf7d0' : '#bfdbfe'}` }}>
+          {step >= 1 ? '✓ Backend is running' : 'Mark as done →'}
+        </button>
+      </StepCard>
+
+      {/* Step 2 */}
+      <StepCard n={2} total={5} icon="wifi" color="#7c3aed" bg="#faf5ff" title="Find your Mac's IP address" subtitle="The ESP32 will send frames to this IP" done={step >= 2}>
+        <p className="text-sm" style={{ color: '#374151' }}>In Terminal, run:</p>
+        <Terminal>ipconfig getifaddr en0</Terminal>
+        <div className="rounded-xl p-3 space-y-2" style={{ background: '#fef3c7', border: '1px solid #fbbf24' }}>
+          <p className="text-xs font-bold" style={{ color: '#92400e' }}>You'll get something like:</p>
+          <code className="text-sm font-bold font-mono" style={{ color: '#dc2626' }}>192.168.1.42</code>
+          <p className="text-xs" style={{ color: '#78350f' }}>
+            Use this in the sketch: <code className="font-mono">SERVER_URL = "http://192.168.1.42:3001"</code>
+          </p>
+        </div>
+        <div className="rounded-xl px-3 py-2.5 flex items-start gap-2" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <span className="text-blue-500 text-sm shrink-0">💡</span>
+          <p className="text-xs" style={{ color: '#1e40af' }}>
+            Mac and ESP32 must be on the <strong>same WiFi</strong>. ESP32 is <strong>2.4 GHz only</strong> — if unsure, test with iPhone hotspot first.
+          </p>
+        </div>
+        <button onClick={() => advance(2)}
+          className="text-sm font-semibold px-4 py-2 rounded-xl"
+          style={{ background: step >= 2 ? '#dcfce7' : '#faf5ff', color: step >= 2 ? '#16a34a' : '#7c3aed', border: `1px solid ${step >= 2 ? '#bbf7d0' : '#ddd6fe'}` }}>
+          {step >= 2 ? '✓ Got my IP' : 'Mark as done →'}
+        </button>
+      </StepCard>
+
+      {/* Step 3 */}
+      <StepCard n={3} total={5} icon="upload" color="#d97706" bg="#fffbeb" title="Flash sketch to ESP32-CAM" subtitle="Copy sketch above → paste in Arduino IDE → upload" done={step >= 3}>
+        <div className="space-y-2">
+          {[
+            { icon: '📋', text: 'Copy the sketch using the button above' },
+            { icon: '🖥', text: <>Open Arduino IDE → press <strong>⌘A</strong> → Delete → paste</> },
+            { icon: '✏️', text: <>Fill in <code className="font-mono bg-amber-50 px-1 rounded text-xs">WIFI_SSID</code>, <code className="font-mono bg-amber-50 px-1 rounded text-xs">WIFI_PASSWORD</code>, and <code className="font-mono bg-amber-50 px-1 rounded text-xs">SERVER_URL</code></> },
+            { icon: '⚙️', text: <>Tools → Board → <strong>AI Thinker ESP32-CAM</strong></> },
+            { icon: '🔌', text: <>Tools → Port → pick your <strong>ESP32 USB port</strong></> },
+            { icon: '⬆️', text: <>Hold <strong>IO0 button</strong> → click <strong>Upload</strong> → release when "Connecting…" appears</> },
+            { icon: '🔄', text: <>Press <strong>EN button</strong> to reboot after upload finishes</> },
+          ].map((s, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl px-3 py-2.5"
+              style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+              <span className="text-base shrink-0">{s.icon}</span>
+              <span className="text-sm" style={{ color: '#374151' }}>{s.text}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => advance(3)}
+          className="text-sm font-semibold px-4 py-2 rounded-xl"
+          style={{ background: step >= 3 ? '#dcfce7' : '#fffbeb', color: step >= 3 ? '#16a34a' : '#d97706', border: `1px solid ${step >= 3 ? '#bbf7d0' : '#fcd34d'}` }}>
+          {step >= 3 ? '✓ Sketch uploaded' : 'Mark as done →'}
+        </button>
+      </StepCard>
+
+      {/* Step 4 */}
+      <StepCard n={4} total={5} icon="check" color="#059669" bg="#f0fdf4" title="Verify in Serial Monitor" subtitle="Tools → Serial Monitor → set baud to 115200" done={step >= 4}>
+        <p className="text-sm" style={{ color: '#374151' }}>After rebooting, you should see this in Serial Monitor:</p>
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #334155' }}>
+          <div className="px-3 py-2 flex items-center gap-2" style={{ background: '#1e293b' }}>
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-xs font-mono" style={{ color: '#64748b' }}>Serial Monitor — 115200 baud</span>
+          </div>
+          <div className="p-3 space-y-0.5 font-mono text-xs" style={{ background: '#0f172a' }}>
+            <p style={{ color: '#94a3b8' }}>=== StaySync ESP32-CAM ===</p>
+            <p style={{ color: '#60a5fa' }}>Camera OK</p>
+            <p style={{ color: '#60a5fa' }}>Connecting to WiFi: StarHub_4594</p>
+            <p style={{ color: '#60a5fa' }}>........</p>
+            <p style={{ color: '#4ade80' }}>Connected! IP: 192.168.1.55</p>
+            <p style={{ color: '#4ade80' }}>Sending frames every 5 seconds...</p>
+            <p style={{ color: '#4ade80' }}>Frame sent OK (14823 bytes)</p>
+            <p style={{ color: '#4ade80' }}>Frame sent OK (15012 bytes)</p>
+          </div>
+        </div>
+        <div className="rounded-xl px-3 py-2.5 flex items-start gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+          <span className="text-sm shrink-0">⚠️</span>
+          <p className="text-xs" style={{ color: '#dc2626' }}>
+            If you see <strong>"WiFi failed"</strong> → double-check <code className="font-mono">WIFI_SSID</code> and <code className="font-mono">WIFI_PASSWORD</code>, and confirm your router is broadcasting <strong>2.4 GHz</strong>.
+          </p>
+        </div>
+        <button onClick={() => advance(4)}
+          className="text-sm font-semibold px-4 py-2 rounded-xl"
+          style={{ background: step >= 4 ? '#dcfce7' : '#f0fdf4', color: step >= 4 ? '#16a34a' : '#059669', border: `1px solid ${step >= 4 ? '#bbf7d0' : '#6ee7b7'}` }}>
+          {step >= 4 ? '✓ Frames sending OK' : 'Mark as done →'}
+        </button>
+      </StepCard>
+
+      {/* Step 5 */}
+      <StepCard n={5} total={5} icon="camera" color="#dc2626" bg="#fff5f5" title="Register camera in portal" subtitle="Give it a name — frames will appear automatically" done={step >= 5}>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wide block mb-1.5" style={{ color: '#374151' }}>Camera name</label>
+            <LightInput value={camName} onChange={setCamName} placeholder="e.g. Living Room" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wide block mb-1.5" style={{ color: '#374151' }}>Location (optional)</label>
+            <LightInput value={camLocation} onChange={setCamLocation} placeholder="e.g. bedroom, hallway" />
+          </div>
+          <div className="rounded-xl px-3 py-2" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <p className="text-xs" style={{ color: '#64748b' }}>
+              Camera ID: <code className="font-mono font-bold" style={{ color: '#0f172a' }}>esp32-cam-1</code>
+              <span className="mx-1.5">·</span>
+              Frames appear here automatically once "Frame sent OK" appears in Serial Monitor
+            </p>
+          </div>
+          <button onClick={registerCamera} disabled={saving || !camName.trim()}
+            className="w-full py-3.5 rounded-xl text-base font-bold disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)', color: '#fff', boxShadow: '0 4px 12px rgba(220,38,38,0.3)' }}>
+            <Icon name="check" size={18} color="#fff" />
+            {saving ? 'Registering…' : 'Register Camera'}
+          </button>
+        </div>
+      </StepCard>
+
     </div>
   );
 }
 
+/* ── Mac / webcam tab ────────────────────────────────────── */
 function MacCameraTab() {
   const router = useRouter();
   const [name, setName] = useState('Webcam');
@@ -476,29 +451,38 @@ function MacCameraTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl p-4 text-sm"
-        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
-        Uses your Mac's built-in webcam or any USB camera. Streams frames to Gemma 4 every 3 seconds.
+      <div className="rounded-2xl p-4 flex items-start gap-3"
+        style={{ background: 'linear-gradient(135deg,#eff6ff,#dbeafe)', border: '1.5px solid #bfdbfe' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: '#2563eb', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+          <Icon name="monitor" size={18} color="#fff" />
+        </div>
+        <div>
+          <p className="text-sm font-bold" style={{ color: '#1e3a8a' }}>Mac / PC Webcam</p>
+          <p className="text-sm mt-0.5" style={{ color: '#3b82f6' }}>
+            Uses your Mac's built-in webcam or any USB camera. Streams frames to Gemma 4 every 3 seconds.
+          </p>
+        </div>
       </div>
-      <div>
-        <label className="text-sm font-medium block mb-1.5" style={{ color: '#374151' }}>Camera name</label>
-        <input value={name} onChange={e => setName(e.target.value)}
-          className="w-full rounded-xl px-4 py-3 text-base outline-none"
-          style={{ background: '#f5f5f5', border: '1px solid #d1d5db', color: '#111827' }} />
+
+      <div className="rounded-2xl p-4 space-y-3"
+        style={{ background: '#fff', border: '1.5px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <label className="text-xs font-bold uppercase tracking-wide block" style={{ color: '#374151' }}>Camera name</label>
+        <LightInput value={name} onChange={setName} placeholder="e.g. Desk Camera" />
+        <BrowserCamera cameraId="browser-mac" cameraName={name} onRegistered={() => setRegistered(true)} compact />
+        {registered && (
+          <button onClick={() => router.push('/cameras')}
+            className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+            style={{ background: '#2563eb', color: '#fff' }}>
+            View Camera Feed <Icon name="arrow-right" size={16} color="#fff" />
+          </button>
+        )}
       </div>
-      <BrowserCamera cameraId="browser-mac" cameraName={name} onRegistered={() => setRegistered(true)} compact />
-      {registered && (
-        <button onClick={() => router.push('/cameras')}
-          className="w-full py-3.5 rounded-xl text-base font-semibold flex items-center justify-center gap-2"
-          style={{ border: '1px solid #1d4ed8', color: '#60a5fa' }}>
-          Go to Cameras <Icon name="arrow-right" size={16} color="#60a5fa" />
-        </button>
-      )}
-      <DesktopCameraGuide />
     </div>
   );
 }
 
+/* ── Phone camera tab ────────────────────────────────────── */
 function PhoneCameraTab() {
   const router = useRouter();
   const [name, setName] = useState('Phone Camera');
@@ -506,65 +490,99 @@ function PhoneCameraTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl p-4 text-sm"
-        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
-        Open on your phone in Chrome. Uses the back camera and streams to Gemma 4 every 3 seconds.
+      <div className="rounded-2xl p-4 flex items-start gap-3"
+        style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px solid #bbf7d0' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: '#059669', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}>
+          <Icon name="phone" size={18} color="#fff" />
+        </div>
+        <div>
+          <p className="text-sm font-bold" style={{ color: '#064e3b' }}>Phone Browser Camera</p>
+          <p className="text-sm mt-0.5" style={{ color: '#059669' }}>
+            Open this page on your phone in Chrome. Uses back camera and streams to Gemma 4 every 3 seconds.
+          </p>
+        </div>
       </div>
-      <div>
-        <label className="text-sm font-medium block mb-1.5" style={{ color: '#374151' }}>Camera name</label>
-        <input value={name} onChange={e => setName(e.target.value)}
-          className="w-full rounded-xl px-4 py-3 text-base outline-none"
-          style={{ background: '#f5f5f5', border: '1px solid #d1d5db', color: '#111827' }} />
+
+      <div className="rounded-2xl p-4 space-y-3"
+        style={{ background: '#fff', border: '1.5px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <label className="text-xs font-bold uppercase tracking-wide block" style={{ color: '#374151' }}>Camera name</label>
+        <LightInput value={name} onChange={setName} placeholder="e.g. Patient's Room" />
+        <BrowserCamera cameraId="browser-phone" cameraName={name} onRegistered={() => setRegistered(true)} compact />
+        {registered && (
+          <button onClick={() => router.push('/cameras')}
+            className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+            style={{ background: '#059669', color: '#fff' }}>
+            View Camera Feed <Icon name="arrow-right" size={16} color="#fff" />
+          </button>
+        )}
       </div>
-      <BrowserCamera cameraId="browser-phone" cameraName={name} onRegistered={() => setRegistered(true)} compact />
-      {registered && (
-        <button onClick={() => router.push('/cameras')}
-          className="w-full py-3.5 rounded-xl text-base font-semibold flex items-center justify-center gap-2"
-          style={{ border: '1px solid #1d4ed8', color: '#60a5fa' }}>
-          Go to Cameras <Icon name="arrow-right" size={16} color="#60a5fa" />
-        </button>
-      )}
     </div>
   );
 }
 
+/* ── Page ────────────────────────────────────────────────── */
 const TABS = [
-  { id: 'esp32', icon: 'signal',  label: 'ESP32-CAM', sub: 'Hardware' },
-  { id: 'mac',   icon: 'monitor', label: 'Mac/PC',    sub: 'Webcam' },
-  { id: 'phone', icon: 'phone',   label: 'Phone',     sub: 'Browser' },
+  { id: 'esp32', icon: 'signal',  label: 'ESP32-CAM', sub: 'Hardware',  color: '#2563eb', activeBg: '#2563eb' },
+  { id: 'mac',   icon: 'monitor', label: 'Mac / PC',  sub: 'Webcam',    color: '#7c3aed', activeBg: '#7c3aed' },
+  { id: 'phone', icon: 'phone',   label: 'Phone',     sub: 'Browser',   color: '#059669', activeBg: '#059669' },
 ];
 
 export default function CameraSetupPage() {
+  const router = useRouter();
   const [tab, setTab] = useState('esp32');
+  const active = TABS.find(t => t.id === tab);
 
   return (
-    <div className="min-h-screen p-4 pb-24" style={{ background: '#f5f5f5' }}>
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Add Camera</h1>
-        <p className="text-sm" style={{ color: '#6b7280' }}>Choose camera type</p>
-      </div>
+    <div className="min-h-screen pb-24" style={{ background: '#f1f5f9' }}>
 
-      <div className="flex gap-2 mb-5">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex-1 py-3 px-1 rounded-xl text-center transition-colors"
-            style={{
-              background: tab === t.id ? '#2563eb' : '#ffffff',
-              border: tab === t.id ? '1px solid #2563eb' : '1px solid #e5e7eb',
-              color: tab === t.id ? '#ffffff' : '#6b7280',
-            }}>
-            <div className="flex justify-center mb-1">
-              <Icon name={t.icon} size={18} color={tab === t.id ? '#ffffff' : 'var(--text-muted,#666)'} />
-            </div>
-            <div className="text-sm font-medium">{t.label}</div>
-            <div className="text-xs opacity-70">{t.sub}</div>
+      {/* ── Hero header ── */}
+      <div className="px-4 pt-4 pb-5"
+        style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}>
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => router.back()}
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <Icon name="arrow-right" size={16} color="#94a3b8" style={{ transform: 'rotate(180deg)', display: 'block' }} />
           </button>
-        ))}
+          <div>
+            <h1 className="text-xl font-bold text-white">Add Camera</h1>
+            <p className="text-xs" style={{ color: '#64748b' }}>Choose your camera type to get started</p>
+          </div>
+        </div>
+
+        {/* Tab selector */}
+        <div className="grid grid-cols-3 gap-2">
+          {TABS.map(t => {
+            const isActive = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-1.5 transition-all"
+                style={{
+                  background: isActive ? t.activeBg : 'rgba(255,255,255,0.05)',
+                  border: isActive ? `1.5px solid ${t.color}` : '1.5px solid rgba(255,255,255,0.08)',
+                  boxShadow: isActive ? `0 4px 14px ${t.color}44` : 'none',
+                }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: isActive ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)' }}>
+                  <Icon name={t.icon} size={18} color={isActive ? '#fff' : '#64748b'} />
+                </div>
+                <span className="text-xs font-bold" style={{ color: isActive ? '#fff' : '#64748b' }}>{t.label}</span>
+                <span className="text-xs" style={{ color: isActive ? 'rgba(255,255,255,0.65)' : '#475569' }}>{t.sub}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {tab === 'esp32' && <ESP32Tab />}
-      {tab === 'mac'   && <MacCameraTab />}
-      {tab === 'phone' && <PhoneCameraTab />}
+      {/* ── Content ── */}
+      <div className="p-4">
+        {tab === 'esp32' && <ESP32Tab />}
+        {tab === 'mac'   && <MacCameraTab />}
+        {tab === 'phone' && <PhoneCameraTab />}
+      </div>
+
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
     </div>
   );
 }
